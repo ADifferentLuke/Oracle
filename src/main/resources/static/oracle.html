@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="style/stylesheet.css">
+    <meta charset="UTF-8">
+    <title>Oracle v0.1</title>
+    <script src="js/jquery-3.7.1.min.js"></script>
+    <script>
+$(window).on('load', function() {
+    let searchParams = new URLSearchParams(window.location.search);
+    let param = searchParams.get("id");
+    $('#world-id').html(param);
+});
+
+    </script>
+</head>
+<body>
+<div class="container">
+    <div class="header-row">
+    </div>
+    <div class="world-title">
+        <div class="world-label">World:</div>
+        <div class="world-id" id="world-id">2d116104-2d1f-4128-bc76-e3bda38d0565</div>
+    </div>
+    <div class="dashboard">
+        <div>Ticks:</div>
+        <div>0</div>
+        <div>Days:</div>
+        <div>0</div>
+        <div>Tick:</div>
+        <div>0</div>
+    </div>
+    <div class="focal">
+        <canvas class="oracle-canvas"></canvas>
+    </div>
+    <div class="sidebar"></div>
+    <div class="footer-row"></div>
+    <div class="footer-button">
+        <div class="center-dev">Turns</div>
+        <input class="center-dev" id="turnCount" name="turnCount" size=9 type="text" value="1">
+        <button id="continueButton" name="continueButton" class="center-dev">&gt;&gt;&gt;</button>
+    </div>
+</div>
+<!--form-- class="form-horizontal">
+    <fieldset>
+
+        <legend>Form Name</legend>
+
+        <div class="form-group">
+            <label class="col-md-4 control-label" for="selectbasic">World</label>
+            <div class="col-md-4">
+                <select id="selectbasic" name="selectbasic" class="form-control">
+                    <option value="FlatWorld">FlatWorld</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="col-md-4 control-label" for="yDimension">Height</label>
+            <div class="col-md-4">
+                <input id="yDimension" name="yDimension" type="text" placeholder="90" class="form-control input-md"
+                       required="">
+                <span class="help-block">help</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="col-md-4 control-label" for="zDimension">Depth</label>
+            <div class="col-md-4">
+                <input id="zDimension" name="zDimension" type="text" placeholder="90" class="form-control input-md"
+                       required="">
+                <span class="help-block">help</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="col-md-4 control-label" for="xDimension">Width</label>
+            <div class="col-md-4">
+                <input id="xDimension" name="xDimension" type="text" placeholder="90" class="form-control input-md"
+                       required="">
+                <span class="help-block">help</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="col-md-4 control-label" for="zoology">Zoology</label>
+            <div class="col-md-4">
+                <textarea class="form-control" id="zoology" name="zoology">(1,2,3),78386f1f1d027e2a177d7b3d65543d3a57660773335270726f6b6e58667b5010586557150d2b33741e402e0f26082b740f403515</textarea>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="col-md-4 control-label" for="submitButton"></label>
+            <div class="col-md-4">
+                <button id="submitButton" name="submitButton" class="btn btn-primary">Begin</button>
+            </div>
+        </div>
+
+    </fieldset>
+</form-->
+
+</body>
+</html>

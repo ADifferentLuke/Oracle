@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome to Oracle!</title>
+    <link rel="stylesheet" href="style/stylesheet.css">
+    <script src="js/jquery-3.7.1.min.js"></script>
+    <script>
+$(window).on('load', function() {
+    console.log('All assets are loaded');
+    $("#submitButton").bind({
+        click: function() {
+            var x = $("#xDimension").val();
+            var y = $("#yDimension").val();
+            var z = $("#zDimension").val();
+
+            var ticksPerDay = $("#ticksPerDay").val();
+            var ticksPerTurn = $("#ticksPerTurn").val();
+            var zoology = $("#zoology").val().split('\n');
+
+            var postData = {
+                "world" : "FLAT_WORLD",
+                "width" : x ? x : 90,
+                "height" : y ? y : 90,
+                "depth" : z ? z : 90,
+                "ticksPerTurn" : ticksPerTurn ? ticksPerTurn : 1,
+                "ticksPerDay" : ticksPerDay ? ticksPerDay : 10,
+                "zoo" : zoology
+            };
+            console.log(postData);
+
+            $.ajax( {
+                url: "/genetics/v1.0/world",
+                type: "POST",
+                contentType: "application/json",
+                dataType: "json",
+                data: JSON.stringify(postData)
+            })
+            .done(function( msg ) {
+                window.location.href = "/oracle.html?id=" + msg.id;
+            })
+            .fail(function(msg) {
+                alert("Failed to create world.");
+            });
+        }
+    });
+
+})
+
+
+    </script>
+</head>
+<body>
+<br/>
+<center><h1>Oracle</h1></center>
+<br/>
+<div class="form-container">
+    <div class="form-header">
+        <diV class="form-title">Generate Simulation</div>
+        <div></div>
+        <select id="worldSelect" name="worldSelect" class="world-selector">
+            <option value="FlatWorld">FlatWorld</option>
+        </select>
+    </div>
+    <div class="form-input-section">
+        <div class="right-label">Height:</div>
+        <input class="input-dimension-y" id="yDimension" name="yDimension" type="text" placeholder="90">
+        <div class="right-label">Ticks Per Day:</div>
+        <input id="ticksPerDay" name="ticksPerDay" type="text" placeholder="10" class="">
+        <div></div>
+        <label class="right-label" for="xDimension">Width:</label>
+        <input id="xDimension" name="xDimension" type="text" placeholder="90" class="">
+        <label class="right-label" for="ticksPerTurn">Ticks Per Turn:</label>
+        <input id="ticksPerTurn" name="ticksPerTurn" type="text" placeholder="1" class="">
+        <div></div>
+        <label class="right-label" for="zDimension">Depth:</label>
+        <input id="zDimension" name="zDimension" type="text" placeholder="90" class="">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+    <div class="form-text-section">
+        <div class="form-text-title">Zoology</div>
+        <div class="form-text-input"><textarea class="zoo-input" rows="10" id="zoology" name="zoology">(1,2,3),78386f1f1d027e2a177d7b3d65543d3a57660773335270726f6b6e58667b5010586557150d2b33741e402e0f26082b740f403515</textarea>
+        </div>
+        <div class="form-text-button">
+            <button id="submitButton" name="submitButton" class="btn btn-primary">Begin</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>
