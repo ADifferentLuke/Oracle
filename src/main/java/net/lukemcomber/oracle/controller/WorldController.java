@@ -80,7 +80,20 @@ public class WorldController {
         }
         return retVal;
     }
-
+    @GetMapping("v1.0/world/advance/{id}")
+    public String advanceWorld(@PathVariable final String id,
+                              @RequestParam( name="turns", required = false, defaultValue = "1") final Integer turns ){
+        final ObjectMapper mapper = new ObjectMapper();
+        if (StringUtils.isNotEmpty(id)) {
+            final Ecosystem system = cache.get(id);
+            if (null != system) {
+                for( int i = 0; i < turns; ++i ){
+                    system.advance();
+                }
+            }
+        }
+        return "{}";
+    }
     @GetMapping("v1.0/world/details/{id}")
     public World showWorld(@PathVariable String id) {
         final ObjectMapper mapper = new ObjectMapper();
