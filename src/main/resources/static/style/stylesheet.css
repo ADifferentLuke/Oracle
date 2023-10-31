@@ -96,10 +96,18 @@ textarea {
       height: 100%;
 }
 .dashboard {
-        display: inline-grid;
+        margin-top: 25px;
+        display: grid;
        grid-row-start: 1;
        grid-column-start: 5;
-       grid-template-columns: 100px 50px;
+       grid-template-columns: 1fr 1fr;
+       overflow-y:auto;
+       border-style: groove;
+       background: #f6faaf;
+       border-radius: 1rem;
+       padding: .5rem;
+
+
 }
 .world-title {
        grid-row-start: 1;
@@ -122,8 +130,71 @@ textarea {
 }
 
 .sidebar {
-    background-color: lightblue;
     grid-area: sidebar;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    overflow-y:auto;
+}
+
+.organism-overview {
+    grid-column-end: span 2;
+        border-style: groove;
+          background: #D2E7F6;
+          padding: .25rem;
+          padding-left: .5rem;
+          border-radius: 1rem;
+          margin-bottom: 5px;
+          margin-left: 5px;
+}
+.organism-postview {
+    grid-column-end: span 2;
+    border-style: groove;
+    background: #EFF7F6;
+    padding: .25rem;
+    border-radius: 1rem;
+    margin-bottom: 5px;
+    word-wrap: break-word;
+    font-style: italic;
+
+}
+
+.gene {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    grid-template-areas:
+    ". geneA ."
+    "geneB . geneC"
+    ". geneD .";
+      column-gap: 10px;
+      row-gap: 15px;
+    border-style: groove;
+      background: #EDE7F6;
+      padding: .25rem;
+      border-radius: 1rem;
+      margin-bottom: 5px;
+      margin-left: 5px;
+}
+
+
+.nucleoA {
+    grid-area: geneA;
+    justify-self: center;
+    align-self: end;
+}
+.nucleoB {
+    grid-area: geneB;
+    justify-self: center;
+}
+.nucleoC {
+    grid-area: geneC;
+    justify-self: center;
+}
+.nucleoD {
+    grid-area: geneD;
+    justify-self: center;
+    align-self: start;
 }
 
 .focal {
@@ -133,6 +204,13 @@ textarea {
 
 .footer-row {
     grid-area: footer;
+    display: grid;
+    /*grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;*/
+    grid-template-columns: 50px 100px 50px 100px 50px 100px;
+}
+.turn-label {
+       grid-column-start: 1;
+       grid-template-columns: 100px 50px;
 }
 .footer-button {
           grid-column-start: 5;

@@ -8,7 +8,10 @@
     <meta charset="UTF-8">
     <title>Oracle v0.1</title>
     <script src="js/jquery-3.7.1.min.js"></script>
+    <script src="js/npm_lodash.min.js"></script>
+
     <script src="js/viewport.js"></script>
+    <script src="js/geneTable.js"></script>
     <script>
 $(window).on('load', function() {
     let searchParams = new URLSearchParams(window.location.search);
@@ -30,16 +33,29 @@ $(window).on('load', function() {
         }
     });
 
+    let organismDetails = new GenesTable($('#sidebar'),param);
+
+    //TODO turn label counts in discrete object
+
     let display = new Display(param,
+        organismDetails,
+        $('#dashboard'),
         $('#totalTicksDisplay'),
         $('#totalDaysDisplay'),
         $('#currentTickDisplay'),
         document.getElementById("world-canvas"),
         function(display){
                 $('#continueButton').prop('disabled',false);
+                //TODO populate genes in sidebar
             }
         );
+
+    window.addEventListener('resize', _.debounce(() => {
+        display.resize(null,null);
+    }, 500));
 });
+
+
 
 
     </script>
@@ -49,10 +65,16 @@ $(window).on('load', function() {
     <div class="header-row">
     </div>
     <div class="world-title">
-        <div class="world-label">World:</div>
+        <div class="world-label">Session:</div>
         <div class="world-id" id="world-id"></div>
     </div>
-    <div class="dashboard">
+    <div id="dashboard" class="dashboard">
+    </div>
+    <div class="focal">
+        <canvas id="world-canvas" name="world-canvas" class="oracle-canvas"></canvas>
+    </div>
+    <div id="sidebar" class="sidebar"></div>
+    <div class="footer-row">
         <div>Ticks:</div>
         <div id="totalTicksDisplay"></div>
         <div>Days:</div>
@@ -60,16 +82,11 @@ $(window).on('load', function() {
         <div>Tick:</div>
         <div id="currentTickDisplay"></div>
     </div>
-    <div class="focal">
-        <canvas id="world-canvas" name="world-canvas" class="oracle-canvas"></canvas>
-    </div>
-    <div class="sidebar"></div>
-    <div class="footer-row"></div>
-    <div class="footer-button">
-        <div class="center-dev">Turns</div>
-        <input class="center-dev" id="turnCount" name="turnCount" size=9 type="text" value="1">
-        <button id="continueButton" name="continueButton" class="center-dev" disabled>&gt;&gt;&gt;</button>
-    </div>
+        <div class="footer-button">
+            <div class="center-dev">Turns</div>
+            <input class="center-dev" id="turnCount" name="turnCount" size=9 type="text" value="1">
+            <button id="continueButton" name="continueButton" class="center-dev" disabled>&gt;&gt;&gt;</button>
+        </div>
 </div>
 </body>
 </html>

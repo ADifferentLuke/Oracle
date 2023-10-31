@@ -1,8 +1,13 @@
 
-function Display(id,totalTicksDisplay, totalDaysDisplay, currentTickDisplay, domCanvasElement,
-    onSuccess, onFailure ) {
+function Display(   id,detailsView, dashboard,
+                    totalTicksDisplay, totalDaysDisplay, currentTickDisplay, domCanvasElement,
+                    onSuccess, onFailure ) {
     this.__id = id;
     this.__canvas = domCanvasElement;
+    this.__dashboard = dashboard;
+
+    //TODO how do I vierfy detailsPane is a GeneTable
+    this.__detailsView = detailsView;
 
     this.__totalTicksDisplay = totalTicksDisplay;
     this.__totalDaysDisplay = totalDaysDisplay;
@@ -16,6 +21,68 @@ function Display(id,totalTicksDisplay, totalDaysDisplay, currentTickDisplay, dom
     this.__pixelHeight = -1;
 
     this.resize(onSuccess,onFailure);
+
+
+
+    this.__canvas.addEventListener('mousedown', event => {
+        this._onClick(event);
+    });
+
+}
+
+Display.prototype._onClick = function(event){
+
+        let rect = this.__canvas.getBoundingClientRect();
+
+        const x = event.clientX - rect.left;
+        //const y =  (event.clientY - rect.top) - this.__pixelHeightOffset;
+        const y =  this.__canvas.height - (event.clientY - rect.top);
+
+        const xcell = Math.floor(x / this.__pixelWidth);
+        const ycell = Math.floor(y / this.__pixelHeight);
+
+        $(this.__dashboard).html("");
+
+        //Get information on location
+
+        console.log("x: " + x + " y: " + y);
+        console.log("x-cell: " + xcell + " y-cell: " + ycell);
+
+            $.ajax( {
+                url: "/genetics/v1.0/world/" + this.__id + "/inspect",
+                type: "GET",
+                contentType: "application/json",
+                dataType: "json",
+                data: {
+                    "x" : xcell,
+                    "y" : ycell
+                }
+            })
+            .done( msg => {
+                console.log(msg);
+
+                for( var key in msg ){
+                    if( key == "organism") {
+                        this.__detailsView.viewOrganismDetails(msg.organism,null,null);
+                    } else {
+                        //Create two divs
+                       let keyDiv = document.createElement("div");
+                       let valDiv = document.createElement("div");
+
+                       $(keyDiv).html(_.capitalize(key));
+                       $(valDiv).html(msg[key]);
+
+                       this.__dashboard.append( keyDiv );
+                       this.__dashboard.append( valDiv );
+                    }
+                }
+            })
+            .fail(function(msg) {
+                console.log( "Unable to inspect location");
+                if( onFailure && onFailure instanceof Function ){
+                    onFailure(this,msg);
+                }
+            });
 }
 
 Display.prototype.resize = function(onSuccess,onFailure) {
@@ -23,6 +90,7 @@ Display.prototype.resize = function(onSuccess,onFailure) {
     //stop refresh thread
     if( this.__refreshInterval ){
         clearInterval( this.__refreshInterval );
+        this.__refreshInterval = null;
     }
 
     $.ajax( {
@@ -62,6 +130,14 @@ Display.prototype._calculateNewSize = function(msg, onSuccess, onFailure){
            if( absoluteX >= x && absoluteY >= y ){
                 this.__pixelWidth = Math.floor(absoluteX / x);
                 this.__pixelHeight = Math.floor(absoluteY / y);
+
+                /*
+                 * Because we invert the y-axis, the left over pixels that don't fit in the environment
+                 *   begin at offset 0 instead of at offset end
+                 */
+                this.__pixelHeightOffset = ( absoluteY - ( this.__pixelHeight * y ));
+
+                console.log( "Leftover height: " + this.__pixelHeightOffset );
 
                 console.log( "Pixels will be [" + this.__pixelWidth + "x" + this.__pixelHeight + "]");
                 this.draw(onSuccess,onFailure);
@@ -136,7 +212,7 @@ Display.prototype._draw = function(display,onSuccess,onFailure){
 }
 
 Display.prototype._drawPixels = function(msg){
-    console.log(msg);
+    //console.log(msg);
 
     if( msg.totalTicks ){
         this.__totalTicksDisplay.html( msg.totalTicks );
@@ -168,13 +244,13 @@ Display.prototype.__drawCell = function(cell){
         } else if( 'leaf' == cell.type ){
             ctx.fillStyle = "green";
         } else if( 'root' == cell.type ){
-            ctx.fillStype = "brown";
+            ctx.fillStyle = "brown";
         } else if( 'stem' == cell.type ){
             ctx.fillStyle = "purple";
         } else {
             ctx.fillStyle = "black";
         }
-        ctx.fillRect( x, this.__canvas.height - y, this.__pixelWidth, this.__pixelHeight);
-        console.log( "Set pixel: [" + x + "," + y + "]");
+        ctx.fillRect( x, this.__canvas.height - y - this.__pixelHeight, this.__pixelWidth, this.__pixelHeight);
+        console.log( "Set pixel: [" + x + "," + (this.__canvas.height - y - this.__pixelHeight) + "]");
     }
 }
