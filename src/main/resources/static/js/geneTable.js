@@ -30,6 +30,7 @@ GenesTable.prototype._drawTable = function(msg){
     if( msg && msg.genes ){
         let overview = document.createElement("div");
         overview.className += " organism-overview";
+        this.__parentDiv.html("");
         this.__parentDiv.append( overview );
 
         let nameElement = document.createElement("div");

@@ -240,7 +240,7 @@ Display.prototype.__drawCell = function(cell){
         let ctx = this.__canvas.getContext("2d");
         //TODO color shold be moved server side
         if( 'seed' == cell.type ){
-            ctx.fillStyle = "red";
+            ctx.fillStyle = "black";
         } else if( 'leaf' == cell.type ){
             ctx.fillStyle = "green";
         } else if( 'root' == cell.type ){

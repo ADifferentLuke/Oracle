@@ -19,6 +19,8 @@ import net.lukemcomber.oracle.model.*;
 import net.lukemcomber.oracle.service.WorldCache;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +29,8 @@ import java.util.*;
 @RestController
 @RequestMapping("genetics")
 public class WorldController {
+
+    private Logger logger = LoggerFactory.getLogger(WorldController.class);
 
     @Autowired
     private WorldCache cache;
@@ -47,15 +51,9 @@ public class WorldController {
         final Ecosystem system = new EcoSystemJsonReader().read(rootNode);
         if (null != system) {
             id = cache.set(system);
-            final Iterator<Organism> iter = system.getOrganisms();
-            while (iter.hasNext()) {
-                System.out.println("======================================================");
-                final Organism organism = iter.next();
-                GenomeStdOutWriter.binaryPrintGenomeToStdOut(organism.getGenome());
-            }
-
+            logger.debug("Create world: " + id);
         } else {
-            System.out.println("No terrain created!");
+            logger.warn("No terrain created!");
         }
         //TODO handle error messages
         return "{ \"id\": \"" + id + "\"}";
@@ -118,7 +116,7 @@ public class WorldController {
                 world.totalTicks = system.getTotalTicks();
 
                 //get list of cells
-                final Iterator<Organism> iterator = system.getOrganisms();
+                final Iterator<Organism> iterator = system.getTerrain().getOrganisms();
                 while (iterator.hasNext()) {
                     for (final Cell cell : CellHelper.getAllOrganismsCells(iterator.next().getCells())) {
                         final Coordinates coordinates = cell.getCoordinates();
@@ -135,7 +133,7 @@ public class WorldController {
         final List<String> retVal = new LinkedList<>();
         final Ecosystem ecosystem = cache.get(worldId);
         if (null != ecosystem) {
-            ecosystem.getOrganisms().forEachRemaining(o -> retVal.add(o.getUniqueID()));
+            ecosystem.getTerrain().getOrganisms().forEachRemaining(o -> retVal.add(o.getUniqueID()));
         } else {
             throw new RuntimeException("World not found: " + worldId);
         }
@@ -183,7 +181,7 @@ public class WorldController {
             final Ecosystem ecosystem = cache.get(worldId);
             if (null != ecosystem) {
                 //TODO we can make this way way more efficient. F linear searches
-                final Iterator<Organism> iter = ecosystem.getOrganisms();
+                final Iterator<Organism> iter = ecosystem.getTerrain().getOrganisms();
                 while (iter.hasNext()) {
                     final Organism organism = iter.next();
                     if (organism.getUniqueID().equals(organismId)) {
@@ -194,6 +192,7 @@ public class WorldController {
                         details.genes = new LinkedList<>();
                         details.name = organismId;
                         details.genus = organism.getOrganismType();
+                        details.parentId = organism.getParentId();
                         final Genome genome = organism.getGenome();
                         details.genome = GenomeSerDe.serialize(genome);
 
