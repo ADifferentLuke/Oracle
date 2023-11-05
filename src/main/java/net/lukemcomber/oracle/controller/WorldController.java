@@ -156,9 +156,10 @@ public class WorldController {
                     retVal.put(terrainProperty.getId(), terrainProperty.getValue().toString());
                }
                final Cell cell = ecosystem.getTerrain().getCell(location);
+               final Organism organism = ecosystem.getTerrain().getOrganism(location);
                if( null != cell ){
                    retVal.put( "cell", cell.getCellType());
-                   retVal.put( "organism", cell.getOrganism().getUniqueID());
+                   retVal.put( "organism", null != organism ? organism.getUniqueID() : " null " );
                    retVal.put( "energy cost", String.valueOf(cell.getMetabolismCost()));
                }
                retVal.put( "coordinates", location.toString() );
