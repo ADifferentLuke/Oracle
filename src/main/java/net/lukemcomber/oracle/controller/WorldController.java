@@ -1,27 +1,28 @@
 package net.lukemcomber.oracle.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.lukemcomber.dev.ai.genetics.biology.Cell;
 import net.lukemcomber.dev.ai.genetics.biology.Gene;
 import net.lukemcomber.dev.ai.genetics.biology.Genome;
 import net.lukemcomber.dev.ai.genetics.biology.Organism;
-import net.lukemcomber.dev.ai.genetics.model.Coordinates;
+import net.lukemcomber.dev.ai.genetics.biology.plant.cells.SeedCell;
+import net.lukemcomber.dev.ai.genetics.model.SpatialCoordinates;
 import net.lukemcomber.dev.ai.genetics.service.CellHelper;
 import net.lukemcomber.dev.ai.genetics.service.EcoSystemJsonReader;
 import net.lukemcomber.dev.ai.genetics.service.GenomeSerDe;
-import net.lukemcomber.dev.ai.genetics.service.GenomeStdOutWriter;
 import net.lukemcomber.dev.ai.genetics.world.Ecosystem;
 import net.lukemcomber.dev.ai.genetics.world.terrain.Terrain;
 import net.lukemcomber.dev.ai.genetics.world.terrain.TerrainProperty;
 import net.lukemcomber.oracle.model.*;
+import net.lukemcomber.oracle.model.net.*;
 import net.lukemcomber.oracle.service.WorldCache;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -35,33 +36,33 @@ public class WorldController {
     @Autowired
     private WorldCache cache;
 
-    @GetMapping("v1.0/world/info")
-    public String getWorldInformation() {
-        return "No world running...";
-    }
-
-    //TODO switch to response entities
     @PostMapping("v1.0/world")
-    public String createWorld(@RequestBody final CreateWorldRequest request) {
+    public ResponseEntity<CreateWorldResponse> createWorld(@RequestBody final CreateWorldRequest request) {
+
+        final CreateWorldResponse response = new CreateWorldResponse();
+
+        response.setStatusCode(HttpStatus.BAD_REQUEST);
 
         final ObjectMapper mapper = new ObjectMapper();
         final JsonNode rootNode = mapper.valueToTree(request);
-        String id = "";
 
         final Ecosystem system = new EcoSystemJsonReader().read(rootNode);
         if (null != system) {
-            id = cache.set(system);
-            logger.debug("Create world: " + id);
+            response.id = cache.set(system);
+            response.setStatusCode(HttpStatus.OK);
         } else {
-            logger.warn("No terrain created!");
+            response.setMessage("No terrain created.");
+            response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        //TODO handle error messages
-        return "{ \"id\": \"" + id + "\"}";
+
+        return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
-    @GetMapping("v1.0/world/{id}")
-    public WorldSummary getWorldSummary(@PathVariable final String id) {
-        final WorldSummary retVal = new WorldSummary();
+    @GetMapping("v1.0/{id}")
+    public ResponseEntity<WorldOverviewResponse> getWorldSummary(@PathVariable final String id) {
+        final WorldOverviewResponse retVal = new WorldOverviewResponse();
+
+        retVal.setStatusCode(HttpStatus.BAD_REQUEST);
 
         if (StringUtils.isNotEmpty(id)) {
             final Ecosystem system = cache.get(id);
@@ -73,22 +74,27 @@ public class WorldController {
                     retVal.depth = terrain.getSizeOfZAxis();
 
                     retVal.id = id;
+                    retVal.setStatusCode(HttpStatus.OK);
                 } else {
-                    //TODO terrain not found
-                    throw new NotImplementedException("Terrain not found");
+                    retVal.setStatusCode(HttpStatus.BAD_REQUEST);
+                    retVal.setMessage("Terrain " + id + " found but was null.");
                 }
             } else {
-                //TODO no world found
-                throw new NotImplementedException("World not found");
+                retVal.setStatusCode(HttpStatus.BAD_REQUEST);
+                retVal.setMessage("Terrain " + id + " not found.");
             }
         }
-        return retVal;
+        return ResponseEntity.status(retVal.getStatusCode()).body(retVal);
+
     }
 
-    @GetMapping("v1.0/world/advance/{id}")
-    public String advanceWorld(@PathVariable final String id,
-                               @RequestParam(name = "turns", required = false, defaultValue = "1") final Integer turns) {
-        final ObjectMapper mapper = new ObjectMapper();
+    //TODO may want to make this asynch so we don't tie up a request thread
+    @GetMapping("v1.0/{id}/advance")
+    public ResponseEntity<GenericResponse> advanceWorld(@PathVariable(name = "id") final String id,
+                                                        @RequestParam(name = "turns", required = false, defaultValue = "1") final Integer turns) {
+
+        //TODO if we switch to async, we'll need to fail if system is already advancing
+
         if (StringUtils.isNotEmpty(id)) {
             final Ecosystem system = cache.get(id);
             if (null != system) {
@@ -97,121 +103,134 @@ public class WorldController {
                 }
             }
         }
-        return "{}";
+        return ResponseEntity.status(HttpStatus.OK).body(new GenericResponse() {
+            @Override
+            public HttpStatus getStatusCode() {
+                return super.getStatusCode();
+            }
+        });
     }
 
-    @GetMapping("v1.0/world/details/{id}")
-    public World showWorld(@PathVariable String id) {
-        final ObjectMapper mapper = new ObjectMapper();
-        final World world = new World();
-        if (StringUtils.isNotEmpty(id)) {
+    @GetMapping("v1.0/{id}/ecology")
+    public ResponseEntity<EcologyResponse> getEcology(@PathVariable(name = "id") String id) {
+        final EcologyResponse response = new EcologyResponse();
+        response.setStatusCode(HttpStatus.BAD_REQUEST);
 
-            //TODO add color ids and move cell type to a details endpoint
+        if (StringUtils.isNotEmpty(id)) {
 
             final Ecosystem system = cache.get(id);
             if (null != system) {
-                world.currentTick = system.getCurrentTick();
-                world.totalDays = system.getTotalDays();
-                ;
-                world.totalTicks = system.getTotalTicks();
+
+                response.currentTick = system.getCurrentTick();
+                response.totalDays = system.getTotalDays();
+                response.totalTicks = system.getTotalTicks();
 
                 //get list of cells
                 final Iterator<Organism> iterator = system.getTerrain().getOrganisms();
                 while (iterator.hasNext()) {
-                    for (final Cell cell : CellHelper.getAllOrganismsCells(iterator.next().getCells())) {
-                        final Coordinates coordinates = cell.getCoordinates();
-                        world.cells.add(new CellInfo(coordinates.xAxis, coordinates.yAxis, coordinates.zAxis, cell.getCellType()));
+                    final Organism organism = iterator.next();
+                    final OrganismBody body = new OrganismBody();
+                    body.setId(organism.getUniqueID());
+                    body.setAlive(organism.isAlive());
+                    for (final Cell cell : CellHelper.getAllOrganismsCells(organism.getCells())) {
+                        final SpatialCoordinates spatialCoordinates = cell.getCoordinates();
+                        final CellLocation location;
+                        if(cell instanceof SeedCell){
+                            location =new SeedCellLocation(spatialCoordinates.xAxis, spatialCoordinates.yAxis,
+                                    spatialCoordinates.zAxis, cell.getCellType(), ((SeedCell)cell).isActivated());
+                        } else {
+                           location = new CellLocation(spatialCoordinates.xAxis, spatialCoordinates.yAxis,
+                                   spatialCoordinates.zAxis, cell.getCellType());
+                        }
+                        body.addCell(location);
                     }
+                    response.organismBodies.add(body);
                 }
+                response.setStatusCode(HttpStatus.OK);
             }
         }
-        return world;
+        return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
-    @GetMapping("v1.0/world/{worldId}/organisms")
-    public List<String> getOrganisms(@PathVariable String worldId) {
-        final List<String> retVal = new LinkedList<>();
+    @GetMapping("v1.0/{id}/inspect")
+    public ResponseEntity<InspectResponse> getLocationInformation(@PathVariable(name = "id") final String worldId,
+                                                                  @RequestParam(name = "x") final int xCoord,
+                                                                  @RequestParam(name = "y") final int yCoord,
+                                                                  @RequestParam(name = "z") final int zCoord) {
+        final InspectResponse response = new InspectResponse();
+        response.setStatusCode(HttpStatus.BAD_REQUEST);
+
         final Ecosystem ecosystem = cache.get(worldId);
         if (null != ecosystem) {
-            ecosystem.getTerrain().getOrganisms().forEachRemaining(o -> retVal.add(o.getUniqueID()));
+            if (0 <= xCoord && 0 <= yCoord && 0 <= zCoord) {
+                //We don't do negative space
+                final SpatialCoordinates location = new SpatialCoordinates(xCoord, yCoord, zCoord);
+                final List<TerrainProperty> properties = ecosystem.getTerrain().getTerrain(location);
+
+                response.setCoordinates(location);
+                for (final TerrainProperty terrainProperty : properties) {
+                    response.addEnvironmentValue(terrainProperty.getId(), terrainProperty.getValue().toString());
+                }
+                final Cell cell = ecosystem.getTerrain().getCell(location);
+                final Organism organism = ecosystem.getTerrain().getOrganism(location);
+                if (null != cell) {
+                    response.addOccupantValue("cell", cell.getCellType());
+                    response.addOccupantValue("organism", null != organism ? organism.getUniqueID() : " null ");
+                    response.addOccupantValue("energy cost", String.valueOf(cell.getMetabolismCost()));
+                }
+                response.setStatusCode(HttpStatus.OK);
+            } else {
+                response.setStatusCode(HttpStatus.BAD_REQUEST);
+                response.setMessage(String.format("Invalid coordinates (%d,%d)", xCoord, yCoord));
+            }
         } else {
-            throw new RuntimeException("World not found: " + worldId);
+            response.setStatusCode(HttpStatus.BAD_REQUEST);
+            response.setMessage("World not found: " + worldId);
         }
-        return retVal;
+        return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
-    @GetMapping("v1.0/world/{worldId}/inspect")
-    public Map<String,String> getLocationInformation(@PathVariable String worldId,
-                                                     @RequestParam(name = "x") final int xCoord,
-                                                     @RequestParam(name = "y") final int yCoord) {
-        final Map<String,String> retVal = new HashMap<>();
-        final Ecosystem ecosystem = cache.get(worldId);
-        if (null != ecosystem) {
-           if( 0 <= xCoord && 0 <= yCoord ){
-               //We don't do negative space
-               final Coordinates location = new Coordinates(xCoord,yCoord,0);
-               final List<TerrainProperty> properties = ecosystem.getTerrain().getTerrain(location);
+    @GetMapping("v1.0/{id}/inspect/{oid}")
+    public ResponseEntity<InspectOrganismResponse> getOrganismsGenes(
+            @PathVariable(name = "id") final String worldId,
+            @PathVariable(name = "oid") final String organismId) {
 
-               for( final TerrainProperty terrainProperty : properties ){
-                    retVal.put(terrainProperty.getId(), terrainProperty.getValue().toString());
-               }
-               final Cell cell = ecosystem.getTerrain().getCell(location);
-               final Organism organism = ecosystem.getTerrain().getOrganism(location);
-               if( null != cell ){
-                   retVal.put( "cell", cell.getCellType());
-                   retVal.put( "organism", null != organism ? organism.getUniqueID() : " null " );
-                   retVal.put( "energy cost", String.valueOf(cell.getMetabolismCost()));
-               }
-               retVal.put( "coordinates", location.toString() );
-           } else {
-               throw new RuntimeException(String.format("Invalid coordinates (%d,%d)",xCoord,yCoord));
-           }
-        } else {
-            throw new RuntimeException("World not found: " + worldId);
-        }
-        return retVal;
-    }
+        final InspectOrganismResponse response = new InspectOrganismResponse();
+        response.setStatusCode(HttpStatus.BAD_REQUEST);
 
-    @GetMapping("v1.0/world/{worldId}/organism/{organismId}")
-    public OrganismDetails getOrganismsGenes(@PathVariable String worldId,
-                                             @PathVariable String organismId) {
-
-
-        OrganismDetails details = null;
         if (StringUtils.isNotEmpty(worldId) && StringUtils.isNotEmpty(organismId)) {
             final Ecosystem ecosystem = cache.get(worldId);
             if (null != ecosystem) {
-                //TODO we can make this way way more efficient. F linear searches
-                final Iterator<Organism> iter = ecosystem.getTerrain().getOrganisms();
-                while (iter.hasNext()) {
-                    final Organism organism = iter.next();
-                    if (organism.getUniqueID().equals(organismId)) {
-                        //we found our baby
-                        details = new OrganismDetails();
-                        details.age = null;
-                        details.energy = organism.getEnergy();
-                        details.genes = new LinkedList<>();
-                        details.name = organismId;
-                        details.genus = organism.getOrganismType();
-                        details.parentId = organism.getParentId();
-                        final Genome genome = organism.getGenome();
-                        details.genome = GenomeSerDe.serialize(genome);
 
-                        for (int i = 0; genome.getNumberOfGenes() > i; ++i) {
-                            final Gene gene = genome.getGeneNumber(i);
-                            if (null != gene) {
-                                details.genes.add(gene);
-                            }
+                final Organism organism = ecosystem.getTerrain().getOrganism(organismId);
+                if (null != organism) {
+                    //we found our baby
+                    response.organism = new OrganismDetails();
+                    response.organism.age = null;
+                    response.organism.energy = organism.getEnergy();
+                    response.organism.genes = new LinkedList<>();
+                    response.organism.name = organismId;
+                    response.organism.genus = organism.getOrganismType();
+                    response.organism.parentId = organism.getParentId();
+                    final Genome genome = organism.getGenome();
+                    response.organism.genome = GenomeSerDe.serialize(genome);
+
+                    for (int i = 0; genome.getNumberOfGenes() > i; ++i) {
+                        final Gene gene = genome.getGeneNumber(i);
+                        if (null != gene) {
+                            response.organism.genes.add(gene);
                         }
-                        break;
                     }
+                    response.setStatusCode(HttpStatus.OK);
                 }
             } else {
-                throw new RuntimeException("World " + worldId + " not found.");
+                response.setStatusCode(HttpStatus.BAD_REQUEST);
+                response.setMessage("World " + worldId + " not found.");
             }
         } else {
-            throw new RuntimeException("World or Organism Id is null!");
+            response.setStatusCode(HttpStatus.BAD_REQUEST);
+            response.setMessage("World or organism id is null!");
         }
-        return details;
+        return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 }

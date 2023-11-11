@@ -7,7 +7,7 @@ function GenesTable(parentDiv,worldId){
 GenesTable.prototype.viewOrganismDetails = function(organismId,onSuccess,onFailure){
 
     $.ajax( {
-        url: "/genetics/v1.0/world/" + this.__worldId + "/organism/" + organismId,
+        url: "/genetics/v1.0/" + this.__worldId + "/inspect/" + organismId,
         type: "GET",
         contentType: "application/json",
         dataType: "json"
@@ -27,7 +27,7 @@ GenesTable.prototype.viewOrganismDetails = function(organismId,onSuccess,onFailu
 }
 
 GenesTable.prototype._drawTable = function(msg){
-    if( msg && msg.genes ){
+    if( msg && msg.organism ){
         let overview = document.createElement("div");
         overview.className += " organism-overview";
         this.__parentDiv.html("");
@@ -35,48 +35,50 @@ GenesTable.prototype._drawTable = function(msg){
 
         let nameElement = document.createElement("div");
         overview.append( nameElement );
-        $(nameElement).html( "Name: <b>" + msg.name + "</b>");
+        $(nameElement).html( "Name: <b>" + msg.organism.name + "</b>");
 
         let genusElement = document.createElement("div");
         overview.append( genusElement );
-        $(genusElement).html( "Genus: <b>" + msg.genus+ "</b>" );
+        $(genusElement).html( "Genus: <b>" + msg.organism.genus+ "</b>" );
         //Name, Genus, Parent
 
         let parentElement = document.createElement("div");
         overview.append( parentElement );
-        if( msg.parentId ){
-            $(parentElement).html( "Parent: <b>" + msg.parentId+ "</b>" );
+        if( msg.organism.parentId ){
+            $(parentElement).html( "Parent: <b>" + msg.organism.parentId+ "</b>" );
         } else {
             $(parentElement).html( "Parent: <b>GOD</b>");
         }
 
-        for( let i = 0; i < msg.genes.length; ++i){
-            let gene = msg.genes[i];
-            console.log( "Gene " + i + ": " + gene.nucleotideA + ", " + gene.nucleotideB + ", "
-             + gene.nucleotideC + ", " + gene.nucleotideD );
-             let geneElement = document.createElement("div");
-             geneElement.className += " gene";
-             this.__parentDiv.append( geneElement );
+        if( msg.organism.genes ){
+            for( let i = 0; i < msg.organism.genes.length; ++i){
+                let gene = msg.organism.genes[i];
+                console.log( "Gene " + i + ": " + gene.nucleotideA + ", " + gene.nucleotideB + ", "
+                 + gene.nucleotideC + ", " + gene.nucleotideD );
+                 let geneElement = document.createElement("div");
+                 geneElement.className += " gene";
+                 this.__parentDiv.append( geneElement );
 
-             let nA = document.createElement("div");
-             nA.className += " nucleoA";
-             let nB = document.createElement("div");
-             nB.className += " nucleoB";
-             let nC = document.createElement("div");
-             nC.className += " nucleoC";
-             let nD = document.createElement("div");
-             nD.className += " nucleoD";
+                 let nA = document.createElement("div");
+                 nA.className += " nucleoA";
+                 let nB = document.createElement("div");
+                 nB.className += " nucleoB";
+                 let nC = document.createElement("div");
+                 nC.className += " nucleoC";
+                 let nD = document.createElement("div");
+                 nD.className += " nucleoD";
 
-             geneElement.append(nA);
-             geneElement.append(nB);
-             geneElement.append(nC);
-             geneElement.append(nD);
+                 geneElement.append(nA);
+                 geneElement.append(nB);
+                 geneElement.append(nC);
+                 geneElement.append(nD);
 
-             $(nA).html(gene.nucleotideA);
-             $(nB).html(gene.nucleotideB);
-             $(nC).html(gene.nucleotideC);
-             $(nD).html(gene.nucleotideD);
+                 $(nA).html(gene.nucleotideA);
+                 $(nB).html(gene.nucleotideB);
+                 $(nC).html(gene.nucleotideC);
+                 $(nD).html(gene.nucleotideD);
 
+            }
         }
         let postview = document.createElement("div");
         postview.className += " organism-postview";

@@ -49,31 +49,56 @@ Display.prototype._onClick = function(event){
         console.log("x-cell: " + xcell + " y-cell: " + ycell);
 
             $.ajax( {
-                url: "/genetics/v1.0/world/" + this.__id + "/inspect",
+                url: "/genetics/v1.0/" + this.__id + "/inspect",
                 type: "GET",
                 contentType: "application/json",
                 dataType: "json",
                 data: {
                     "x" : xcell,
-                    "y" : ycell
+                    "y" : ycell,
+                    "z" : 0
                 }
             })
             .done( msg => {
                 console.log(msg);
 
                 for( var key in msg ){
-                    if( key == "organism") {
-                        this.__detailsView.viewOrganismDetails(msg.organism,null,null);
-                    } else {
-                        //Create two divs
-                       let keyDiv = document.createElement("div");
-                       let valDiv = document.createElement("div");
+                    if( key == "occupant") {
+                    //TODO this can be condensed - lots of duplicate code
+                        this.__detailsView.viewOrganismDetails(msg.occupant.organism,null,null);
+                        for( occKey in msg.occupant ){
+                            let keyDiv = document.createElement("div");
+                            let valDiv = document.createElement("div");
 
-                       $(keyDiv).html(_.capitalize(key));
-                       $(valDiv).html(msg[key]);
+                            $(keyDiv).html(_.capitalize(occKey));
+                            $(valDiv).html(msg.occupant[occKey]);
 
-                       this.__dashboard.append( keyDiv );
-                       this.__dashboard.append( valDiv );
+                            this.__dashboard.append( keyDiv );
+                            this.__dashboard.append( valDiv );
+                        }
+                    } else if( key == "environment") {
+                        for( envKey in msg.environment ){
+                            let keyDiv = document.createElement("div");
+                            let valDiv = document.createElement("div");
+
+                            $(keyDiv).html(_.capitalize(envKey));
+                            $(valDiv).html(msg.environment[envKey]);
+
+                            this.__dashboard.append( keyDiv );
+                            this.__dashboard.append( valDiv );
+                        }
+                    } else if( key == "coordinates") {
+                        let coordStr = "(" + msg.coordinates.xAxis + "," +
+                        msg.coordinates.yAxis + "," +
+                        msg.coordinates.zAxis + ")";
+
+                        let keyDiv = document.createElement("div");
+                        let valDiv = document.createElement("div");
+                        $(keyDiv).html(_.capitalize(key));
+                        $(valDiv).html(coordStr);
+
+                        this.__dashboard.append( keyDiv );
+                        this.__dashboard.append( valDiv );
                     }
                 }
             })
@@ -94,7 +119,7 @@ Display.prototype.resize = function(onSuccess,onFailure) {
     }
 
     $.ajax( {
-        url: "/genetics/v1.0/world/" + this.__id,
+        url: "/genetics/v1.0/" + this.__id,
         type: "GET",
         contentType: "application/json",
         dataType: "json"
@@ -164,7 +189,7 @@ Display.prototype._calculateNewSize = function(msg, onSuccess, onFailure){
 Display.prototype.advance = function(turns,onSuccess,onFailure){
 
     $.ajax( {
-        url: "/genetics/v1.0/world/advance/" + this.__id,
+        url: "/genetics/v1.0/" + this.__id + "/advance",
         type: "GET",
         contentType: "application/json",
         dataType: "json",
@@ -190,10 +215,9 @@ Display.prototype.draw = function(onSuccess,onFailure) {
     this._draw(this,onSuccess,onFailure);
 }
 
-//This needs to be static context because it is called from setInterval
 Display.prototype._draw = function(display,onSuccess,onFailure){
     $.ajax( {
-        url: "/genetics/v1.0/world/details/" + display.__id,
+        url: "/genetics/v1.0/" + display.__id + "/ecology",
         type: "GET",
         contentType: "application/json",
         dataType: "json"
@@ -211,8 +235,14 @@ Display.prototype._draw = function(display,onSuccess,onFailure){
     });
 }
 
+Display.prototype.clear = function(){
+        let ctx = this.__canvas.getContext("2d");
+        ctx.clearRect(0,0,this.__canvas.width,this.__canvas.height);
+}
+
 Display.prototype._drawPixels = function(msg){
     //console.log(msg);
+    this.clear();
 
     if( msg.totalTicks ){
         this.__totalTicksDisplay.html( msg.totalTicks );
@@ -224,31 +254,42 @@ Display.prototype._drawPixels = function(msg){
         this.__currentTickDisplay.html( msg.currentTick );
     }
 
-    if( msg.cells && 0 < msg.cells.length){
-        for( let i = 0; i < msg.cells.length; ++i){
-            let cell = msg.cells[i];
-            this.__drawCell(cell);
+    if( msg.organisms && 0 < msg.organisms.length){
+        for( let i = 0; msg.organisms.length > i; ++i){
+            let organism = msg.organisms[i];
+            for( let j = 0; j < organism.cells.length; ++j){
+                    let cell = organism.cells[j];
+                    this.__drawCell(cell,organism.alive);
+            }
         }
     }
 }
-Display.prototype.__drawCell = function(cell){
+Display.prototype.__drawCell = function(cell,isAlive){
 
     if( cell ){
         let x = cell.x * this.__pixelWidth;
         let y = cell.y * this.__pixelHeight;
 
         let ctx = this.__canvas.getContext("2d");
+        if( isAlive ) {
         //TODO color shold be moved server side
-        if( 'seed' == cell.type ){
-            ctx.fillStyle = "black";
-        } else if( 'leaf' == cell.type ){
-            ctx.fillStyle = "green";
-        } else if( 'root' == cell.type ){
-            ctx.fillStyle = "brown";
-        } else if( 'stem' == cell.type ){
-            ctx.fillStyle = "purple";
+            if( 'seed' == cell.type ){
+                ctx.fillStyle = "black";
+            } else if( 'leaf' == cell.type ){
+                ctx.fillStyle = "green";
+            } else if( 'root' == cell.type ){
+                ctx.fillStyle = "brown";
+            } else if( 'stem' == cell.type ){
+                ctx.fillStyle = "purple";
+            }  else {
+                ctx.fillStyle = "black";
+            }
         } else {
-            ctx.fillStyle = "black";
+            if( 'seed' == cell.type && !cell.activated ){
+                ctx.fillStyle= "black";
+            } else {
+                ctx.fillStyle="gray";
+            }
         }
         ctx.fillRect( x, this.__canvas.height - y - this.__pixelHeight, this.__pixelWidth, this.__pixelHeight);
         console.log( "Set pixel: [" + x + "," + (this.__canvas.height - y - this.__pixelHeight) + "]");

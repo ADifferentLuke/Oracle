@@ -1,10 +1,9 @@
-package net.lukemcomber.oracle.model;
+package net.lukemcomber.oracle.model.net;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import net.lukemcomber.oracle.model.GenericResponse;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class WorldSummary {
+public class WorldOverviewResponse extends GenericResponse {
 
     @JsonProperty("id")
     public String id;
@@ -14,5 +13,4 @@ public class WorldSummary {
     public int height;
     @JsonProperty("depth")
     public int depth;
-
 }
