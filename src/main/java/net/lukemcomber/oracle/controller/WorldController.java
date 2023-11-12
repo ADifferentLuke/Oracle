@@ -176,7 +176,13 @@ public class WorldController {
                 if (null != cell) {
                     response.addOccupantValue("cell", cell.getCellType());
                     response.addOccupantValue("organism", null != organism ? organism.getUniqueID() : " null ");
-                    response.addOccupantValue("energy cost", String.valueOf(cell.getMetabolismCost()));
+                    response.addOccupantValue("cell cost", String.valueOf(cell.getMetabolismCost()));
+
+                    /* Need a better place for this */
+                    response.addOccupantValue( "organism energy", String.valueOf(organism.getEnergy()));
+                    response.addOccupantValue( "organism cost", String.valueOf(organism.getMetabolismCost()));
+                    response.addOccupantValue( "organism birth", String.valueOf(organism.getBirthTick()) );
+                    response.addOccupantValue( "organism updated", String.valueOf(organism.getLastUpdatedTick()));
                 }
                 response.setStatusCode(HttpStatus.OK);
             } else {
