@@ -11,7 +11,7 @@ import net.lukemcomber.dev.ai.genetics.model.SpatialCoordinates;
 import net.lukemcomber.dev.ai.genetics.service.CellHelper;
 import net.lukemcomber.dev.ai.genetics.service.EcoSystemJsonReader;
 import net.lukemcomber.dev.ai.genetics.service.GenomeSerDe;
-import net.lukemcomber.dev.ai.genetics.world.Ecosystem;
+import net.lukemcomber.dev.ai.genetics.Ecosystem;
 import net.lukemcomber.dev.ai.genetics.world.terrain.Terrain;
 import net.lukemcomber.dev.ai.genetics.world.terrain.TerrainProperty;
 import net.lukemcomber.oracle.model.*;

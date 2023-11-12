@@ -1,6 +1,6 @@
 package net.lukemcomber.oracle.service;
 
-import net.lukemcomber.dev.ai.genetics.world.Ecosystem;
+import net.lukemcomber.dev.ai.genetics.Ecosystem;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;

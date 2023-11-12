@@ -1,5 +1,6 @@
 package net.lukemcomber.oracle.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.http.HttpStatus;
 
@@ -9,6 +10,7 @@ import java.util.HashMap;
 public abstract class GenericResponse {
 
     private String message;
+    @JsonIgnore
     private HttpStatus statusCode;
 
     public String getMessage() {
