@@ -1,8 +1,14 @@
 package net.lukemcomber.oracle.model;
 
+/*
+ * (c) 2023 Luke McOmber
+ * This code is licensed under MIT license (see LICENSE.txt for details)
+ */
+
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import net.lukemcomber.dev.ai.genetics.biology.Gene;
+import net.lukemcomber.genetics.biology.Gene;
 
 import java.util.List;
 

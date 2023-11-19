@@ -1,3 +1,7 @@
+/*
+ * (c) 2023 Luke McOmber
+ * This code is licensed under MIT license (see LICENSE.txt for details)
+ */
 
 function Display(   id,detailsView, dashboard,
                     totalTicksDisplay, totalDaysDisplay, currentTickDisplay, domCanvasElement,

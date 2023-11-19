@@ -1,6 +1,12 @@
 package net.lukemcomber.oracle.service;
 
-import net.lukemcomber.dev.ai.genetics.Ecosystem;
+/*
+ * (c) 2023 Luke McOmber
+ * This code is licensed under MIT license (see LICENSE.txt for details)
+ */
+
+
+import net.lukemcomber.genetics.Ecosystem;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;

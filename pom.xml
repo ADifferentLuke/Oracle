@@ -19,9 +19,9 @@
 	</properties>
 	<dependencies>
 		<dependency>
-			<groupId>net.lukemcomber.dev.ai</groupId>
+			<groupId>net.lukemcomber</groupId>
 			<artifactId>genetics</artifactId>
-			<version>0.0.3-alpha</version>
+			<version>0.1.0</version>
 		</dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -111,5 +111,13 @@
 			</plugin>
 		</plugins>
 	</build>
-
+<repositories>
+    <repository>
+        <id>github</id>
+        <name>Luke Packages</name>
+        <url>https://maven.pkg.github.com/ADifferentLuke/Genetics</url>
+        <releases><enabled>true</enabled></releases>
+        <snapshots><enabled>true</enabled></snapshots>
+    </repository>
+</repositories>
 </project>

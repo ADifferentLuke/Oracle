@@ -1,19 +1,25 @@
 package net.lukemcomber.oracle.controller;
 
+/*
+ * (c) 2023 Luke McOmber
+ * This code is licensed under MIT license (see LICENSE.txt for details)
+ */
+
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.lukemcomber.dev.ai.genetics.biology.Cell;
-import net.lukemcomber.dev.ai.genetics.biology.Gene;
-import net.lukemcomber.dev.ai.genetics.biology.Genome;
-import net.lukemcomber.dev.ai.genetics.biology.Organism;
-import net.lukemcomber.dev.ai.genetics.biology.plant.cells.SeedCell;
-import net.lukemcomber.dev.ai.genetics.model.SpatialCoordinates;
-import net.lukemcomber.dev.ai.genetics.service.CellHelper;
-import net.lukemcomber.dev.ai.genetics.service.EcoSystemJsonReader;
-import net.lukemcomber.dev.ai.genetics.service.GenomeSerDe;
-import net.lukemcomber.dev.ai.genetics.Ecosystem;
-import net.lukemcomber.dev.ai.genetics.world.terrain.Terrain;
-import net.lukemcomber.dev.ai.genetics.world.terrain.TerrainProperty;
+import net.lukemcomber.genetics.biology.Cell;
+import net.lukemcomber.genetics.biology.Gene;
+import net.lukemcomber.genetics.biology.Genome;
+import net.lukemcomber.genetics.biology.Organism;
+import net.lukemcomber.genetics.biology.plant.cells.SeedCell;
+import net.lukemcomber.genetics.model.SpatialCoordinates;
+import net.lukemcomber.genetics.service.CellHelper;
+import net.lukemcomber.genetics.service.EcoSystemJsonReader;
+import net.lukemcomber.genetics.service.GenomeSerDe;
+import net.lukemcomber.genetics.Ecosystem;
+import net.lukemcomber.genetics.world.terrain.Terrain;
+import net.lukemcomber.genetics.world.terrain.TerrainProperty;
 import net.lukemcomber.oracle.model.*;
 import net.lukemcomber.oracle.model.net.*;
 import net.lukemcomber.oracle.service.WorldCache;
@@ -92,8 +98,6 @@ public class WorldController {
     @GetMapping("v1.0/{id}/advance")
     public ResponseEntity<GenericResponse> advanceWorld(@PathVariable(name = "id") final String id,
                                                         @RequestParam(name = "turns", required = false, defaultValue = "1") final Integer turns) {
-
-        //TODO if we switch to async, we'll need to fail if system is already advancing
 
         if (StringUtils.isNotEmpty(id)) {
             final Ecosystem system = cache.get(id);

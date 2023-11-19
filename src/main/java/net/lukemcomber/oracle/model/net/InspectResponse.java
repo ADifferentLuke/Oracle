@@ -1,7 +1,13 @@
 package net.lukemcomber.oracle.model.net;
 
+/*
+ * (c) 2023 Luke McOmber
+ * This code is licensed under MIT license (see LICENSE.txt for details)
+ */
+
+
 import com.fasterxml.jackson.annotation.JsonProperty;
-import net.lukemcomber.dev.ai.genetics.model.SpatialCoordinates;
+import net.lukemcomber.genetics.model.SpatialCoordinates;
 import net.lukemcomber.oracle.model.GenericResponse;
 
 import java.util.HashMap;
