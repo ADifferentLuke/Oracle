@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+
+ (c) 2023 Luke McOmber
+ This code is licensed under MIT license (see LICENSE.txt for details)
+
+-->
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome to Oracle!</title>
+    <link rel="stylesheet" href="style/stylesheet.css">
+    <link rel=stylesheet href=https://cdn.jsdelivr.net/npm/pretty-print-json@2.0/dist/css/pretty-print-json.css>
+    <script src="js/jquery-3.7.1.min.js"></script>
+    <script src=https://cdn.jsdelivr.net/npm/pretty-print-json@2.0/dist/pretty-print-json.min.js></script>
+    <script>
+$(window).on('load', function() {
+    let searchParams = new URLSearchParams(window.location.search);
+    let param = searchParams.get("id");
+    $('#metaTitle').html("Session: " + param);
+});
+
+function showData(evt,type){
+
+    let searchParams = new URLSearchParams(window.location.search);
+    let param = searchParams.get("id");
+
+    if( type == "BACK" ){
+        window.location.href = "/oracle.html?id=" + param;
+    } else {
+        $.ajax( {
+            url: "/genetics/v1.0/" + param + "/log/" + type,
+                    type: "GET",
+                    contentType: "application/json",
+                    dataType: "json"
+                })
+                .done(function( msg ) {
+                    if( msg.log ){
+                        const html = prettyPrintJson.toHtml(msg.log,
+                        {
+                            "indent" : " ",
+                            "trailingComma": false,
+                            "lineNumbers": true,
+                            "quoteKeys": true
+                            });
+                        $('#display').html(html);
+                    }
+                })
+                .fail(function(msg) {
+                    let newMsg = msg.message;
+                    if( msg.responseJSON.message ){
+                        $('#display').html(msg.responseJSON.message);
+                    } else {
+                         console.log( msg );
+                        console.log( "Failed metadata lookup: " + msg );
+                    }
+                });
+        }
+}
+
+    </script>
+</head>
+<body>
+<div class="metaPage">
+    <div></div>
+    <div id="metaTitle" class="metaTitle">Session:</div>
+    <div></div>
+    <div></div>
+    <div class="tab">
+        <button class="tablinks" onclick="showData(event, 'GENEALOGY')">Genealogy</button>
+        <button class="tablinks" onclick="showData(event, 'GENOME')">Genome</button>
+        <button class="tablinks" onclick="showData(event, 'PERFORMANCE')">Performance</button>
+        <button class="tablinks" onclick="showData(event, 'BACK')">Back</button>
+    </div>
+    <div></div>
+    <div></div>
+    <div id="display" class="dataDisplay"> </div>
+    <div></div>
+</div>
+</body>
+</html>

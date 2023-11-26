@@ -18,6 +18,10 @@ import net.lukemcomber.genetics.service.CellHelper;
 import net.lukemcomber.genetics.service.EcoSystemJsonReader;
 import net.lukemcomber.genetics.service.GenomeSerDe;
 import net.lukemcomber.genetics.Ecosystem;
+import net.lukemcomber.genetics.store.MetadataStore;
+import net.lukemcomber.genetics.store.MetadataStoreFactory;
+import net.lukemcomber.genetics.store.metadata.Genealogy;
+import net.lukemcomber.genetics.store.metadata.Performance;
 import net.lukemcomber.genetics.world.terrain.Terrain;
 import net.lukemcomber.genetics.world.terrain.TerrainProperty;
 import net.lukemcomber.oracle.model.*;
@@ -27,10 +31,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.configurationprocessor.json.JSONArray;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.*;
 
 @RestController
@@ -38,6 +44,12 @@ import java.util.*;
 public class WorldController {
 
     private Logger logger = LoggerFactory.getLogger(WorldController.class);
+
+    public enum AvailableMetadata {
+        GENOME,
+        GENEALOGY,
+        PERFORMANCE
+    }
 
     @Autowired
     private WorldCache cache;
@@ -139,12 +151,12 @@ public class WorldController {
                     for (final Cell cell : CellHelper.getAllOrganismsCells(organism.getCells())) {
                         final SpatialCoordinates spatialCoordinates = cell.getCoordinates();
                         final CellLocation location;
-                        if(cell instanceof SeedCell){
-                            location =new SeedCellLocation(spatialCoordinates.xAxis, spatialCoordinates.yAxis,
-                                    spatialCoordinates.zAxis, cell.getCellType(), ((SeedCell)cell).isActivated());
+                        if (cell instanceof SeedCell) {
+                            location = new SeedCellLocation(spatialCoordinates.xAxis, spatialCoordinates.yAxis,
+                                    spatialCoordinates.zAxis, cell.getCellType(), ((SeedCell) cell).isActivated());
                         } else {
-                           location = new CellLocation(spatialCoordinates.xAxis, spatialCoordinates.yAxis,
-                                   spatialCoordinates.zAxis, cell.getCellType());
+                            location = new CellLocation(spatialCoordinates.xAxis, spatialCoordinates.yAxis,
+                                    spatialCoordinates.zAxis, cell.getCellType());
                         }
                         body.addCell(location);
                     }
@@ -183,10 +195,10 @@ public class WorldController {
                     response.addOccupantValue("cell cost", String.valueOf(cell.getMetabolismCost()));
 
                     /* Need a better place for this */
-                    response.addOccupantValue( "organism energy", String.valueOf(organism.getEnergy()));
-                    response.addOccupantValue( "organism cost", String.valueOf(organism.getMetabolismCost()));
-                    response.addOccupantValue( "organism birth", String.valueOf(organism.getBirthTick()) );
-                    response.addOccupantValue( "organism updated", String.valueOf(organism.getLastUpdatedTick()));
+                    response.addOccupantValue("organism energy", String.valueOf(organism.getEnergy()));
+                    response.addOccupantValue("organism cost", String.valueOf(organism.getMetabolismCost()));
+                    response.addOccupantValue("organism birth", String.valueOf(organism.getBirthTick()));
+                    response.addOccupantValue("organism updated", String.valueOf(organism.getLastUpdatedTick()));
                 }
                 response.setStatusCode(HttpStatus.OK);
             } else {
@@ -240,6 +252,59 @@ public class WorldController {
         } else {
             response.setStatusCode(HttpStatus.BAD_REQUEST);
             response.setMessage("World or organism id is null!");
+        }
+        return ResponseEntity.status(response.getStatusCode()).body(response);
+    }
+
+    @GetMapping("v1.0/{id}/log/{type}")
+    public ResponseEntity<LogResponse> getOrganismHistory(@PathVariable(name = "id") final String worldId,
+                                                          @PathVariable(name = "type") final AvailableMetadata type) {
+
+        final LogResponse response = new LogResponse();
+        response.setStatusCode(HttpStatus.BAD_REQUEST);
+
+        final ObjectMapper mapper = new ObjectMapper();
+        if (StringUtils.isNotEmpty(worldId)) {
+            final Ecosystem ecosystem = cache.get(worldId);
+            if (null != ecosystem) {
+                final Class clazz;
+                switch (type) {
+                    case GENOME -> {
+                        clazz = net.lukemcomber.genetics.store.metadata.Genome.class;
+                    }
+                    case GENEALOGY -> {
+                        clazz = Genealogy.class;
+                    }
+                    case PERFORMANCE -> {
+                        clazz = Performance.class;
+                    }
+                    default -> {
+                        clazz = null;
+                    }
+
+                }
+                try {
+                    if( null != clazz ) {
+                        final MetadataStore<net.lukemcomber.genetics.store.metadata.Genome> genomeMetadataStore =
+                                MetadataStoreFactory.getMetadataStore(ecosystem.getTerrain().getUUID().toString(), clazz,
+                                        ecosystem.getTerrain().getProperties());
+
+                        if (!genomeMetadataStore.expire()) {
+                            response.log = mapper.valueToTree(genomeMetadataStore.retrieve());
+                            response.setStatusCode(HttpStatus.OK);
+                        } else {
+                            response.setMessage("This information has expired or was not collected.");
+                        }
+                    } else {
+                        response.setMessage(String.format("%s is not a supported metadata collection.", clazz.getSimpleName()));
+                    }
+
+
+                } catch (final IOException e) {
+                    response.setMessage(e.getMessage());
+                    logger.error("", e);
+                }
+            }
         }
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }

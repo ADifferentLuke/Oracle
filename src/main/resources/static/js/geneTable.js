@@ -89,7 +89,7 @@ GenesTable.prototype._drawTable = function(msg){
         let postview = document.createElement("div");
         postview.className += " organism-postview";
         this.__parentDiv.append( postview );
-        $(postview).html(msg.genome);
+        $(postview).html(msg.organism.genome);
     } else {
         console.log( "Unable to read genes: " + msg);
     }

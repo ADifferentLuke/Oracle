@@ -24,6 +24,9 @@ $(window).on('load', function() {
     let param = searchParams.get("id");
     $('#world-id').html(param);
 
+    var a = document.getElementById('yourlinkId');
+    $('#detailLink').attr('href',"metadata.html?id=" + param);
+
     $('#continueButton').click( function(){
         console.log( "Disabling button");
         $('#continueButton').prop('disabled',true);
@@ -73,6 +76,8 @@ $(window).on('load', function() {
     <div class="world-title">
         <div class="world-label">Session:</div>
         <div class="world-id" id="world-id"></div>
+        <div></div>
+        <div class="details-link"><a id="detailLink" href="test">Details</a> </div>
     </div>
     <div id="dashboard" class="dashboard">
     </div>
