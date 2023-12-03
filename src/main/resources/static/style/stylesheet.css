@@ -287,3 +287,28 @@ Meta data styles
     height: 99%;
     width: 100%;
 }
+
+.div-table {
+  display: table;
+  width: 75%;
+  background-color: #eee;
+  border: 1px solid #666666;
+  border-spacing: 5px; /* cellspacing:poor IE support for  this */
+}
+.div-table-row {
+  display: table-row;
+  width: auto;
+  clear: both;
+}
+.div-table-col-large {
+  float: left; /* fix for  buggy browsers */
+  display: table-cell;
+  width: 70%;
+  background-color: #ccc;
+}
+.div-table-col-small {
+  float: left; /* fix for  buggy browsers */
+  display: table-cell;
+  width: 10%;
+  background-color: #ccc;
+}

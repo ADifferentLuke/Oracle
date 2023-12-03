@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+
+ (c) 2023 Luke McOmber
+ This code is licensed under MIT license (see LICENSE.txt for details)
+
+-->
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome to Oracle!</title>
+    <link rel="stylesheet" href="style/stylesheet.css">
+    <script src="js/jquery-3.7.1.min.js"></script>
+    <script>
+$(window).on('load', function() {
+    console.log('All assets are loaded');
+    $("#submitButton").bind({
+        click: function() {
+            var x = $("#xDimension").val();
+            var y = $("#yDimension").val();
+            var z = $("#zDimension").val();
+
+            var ticksPerDay = $("#ticksPerDay").val();
+            var ticksPerTurn = $("#ticksPerTurn").val();
+            var zoology = $("#zoology").val().split('\n');
+            var world = $('#worldSelect option:selected').val();
+
+            var postData = {
+                "world" : world,
+                "width" : x ? x : 90,
+                "height" : y ? y : 90,
+                "depth" : z ? z : 90,
+                "ticksPerTurn" : ticksPerTurn ? ticksPerTurn : 1,
+                "ticksPerDay" : ticksPerDay ? ticksPerDay : 10,
+                "zoo" : zoology
+            };
+            console.log(postData);
+
+            $.ajax( {
+                url: "/genetics/v1.0/world",
+                type: "POST",
+                contentType: "application/json",
+                dataType: "json",
+                data: JSON.stringify(postData)
+            })
+            .done(function( msg ) {
+                window.location.href = "/oracle.html?id=" + msg.id;
+            })
+            .fail(function(msg) {
+                alert("Failed to create world.");
+            });
+        }
+    });
+
+})
+
+
+    </script>
+</head>
+<body>
+<br/>
+<center><h1>Oracle</h1></center>
+<br/>
+<div class="form-container">
+    <div class="form-header">
+        <diV class="form-title">Generate Simulation</div>
+        <div></div>
+        <select id="worldSelect" name="worldSelect" class="world-selector">
+            <option value="flat-floral-universe">Flat Flora</option>
+        </select>
+    </div>
+    <div class="form-input-section">
+        <div class="right-label">Width:</div>
+        <input id="xDimension" name="xDimension" type="text" placeholder="90">
+        <div class="right-label">Ticks Per Day:</div>
+        <input id="ticksPerDay" name="ticksPerDay" type="text" placeholder="10" class="">
+        <div></div>
+        <label class="right-label" for="yDimension">Height:</label>
+        <input id="yDimension" name="yDimension" type="text" placeholder="90" class="">
+        <label class="right-label" for="ticksPerTurn">Ticks Per Turn:</label>
+        <input id="ticksPerTurn" name="ticksPerTurn" type="text" placeholder="1" class="">
+        <div></div>
+        <label class="right-label" for="zDimension">Depth:</label>
+        <input id="zDimension" name="zDimension" type="text" placeholder="90" class="">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+    <div class="form-text-section">
+        <div class="form-text-title">Zoology</div>
+        <!--div class="form-text-input"><textarea class="zoo-input" rows="10" id="zoology" name="zoology">(45,45,3),78386f1f1d027e2a177d7b3d65543d3a57660773335270726f6b6e58667b5010586557150d2b33741e402e0f26082b740f403515</textarea-->
+            <!--div class="form-text-input"><textarea class="zoo-input" rows="10" id="zoology" name="zoology">(45,45,3),0209007802090078020900780209007802090078020900780209007802090078020900780209007802090078020900780209007802090078020900780209007802090078020900780209007802090078</textarea-->
+        <!--    "0202090c0202090c0202090c0206090c0202090c0202090c920209040282090c0202090c0602090c0202290c0202090c0202090c0202090c0202090c0282090c0302090c0202090c0200090c0202090c" -->
+
+        <div class="form-text-input"><textarea class="zoo-input" rows="10" id="zoology" name="zoology">(45,45,3),0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c</textarea>
+        </div>
+        <div class="form-text-button">
+            <button id="submitButton" name="submitButton" class="btn btn-primary">Begin</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>

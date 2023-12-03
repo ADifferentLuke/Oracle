@@ -19,4 +19,7 @@ public class WorldOverviewResponse extends GenericResponse {
     public int height;
     @JsonProperty("depth")
     public int depth;
+
+    @JsonProperty("active")
+    public boolean active;
 }

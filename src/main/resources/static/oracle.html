@@ -32,8 +32,12 @@ $(window).on('load', function() {
         $('#continueButton').prop('disabled',true);
         let turns = $('#turnCount').val();
         if( turns ){
-            display.advance(turns,function(msg){
-               $('#continueButton').prop('disabled',false);
+            display.advance(turns,function(display, msg){
+               if( msg.active ){
+                    $('#continueButton').prop('disabled',false);
+               } else {
+                    console.log( "Resize triggered: simulation has ended. Disabling button");
+               }
             }, function( display, msg){
                 console.log( "Turn advancement failed." );
             });
@@ -53,9 +57,13 @@ $(window).on('load', function() {
         $('#totalDaysDisplay'),
         $('#currentTickDisplay'),
         document.getElementById("world-canvas"),
-        function(display){
-                $('#continueButton').prop('disabled',false);
-                //TODO populate genes in sidebar
+        //on success for resizing
+        function(display,msg){
+                if( msg.active ) {
+                    $('#continueButton').prop('disabled',false);
+                } else {
+                    console.log( "Resize triggered: simulation has ended. Disabling button");
+                }
             }
         );
 

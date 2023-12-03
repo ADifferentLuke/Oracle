@@ -20,6 +20,7 @@ import net.lukemcomber.genetics.service.GenomeSerDe;
 import net.lukemcomber.genetics.Ecosystem;
 import net.lukemcomber.genetics.store.MetadataStore;
 import net.lukemcomber.genetics.store.MetadataStoreFactory;
+import net.lukemcomber.genetics.store.MetadataStoreGroup;
 import net.lukemcomber.genetics.store.metadata.Genealogy;
 import net.lukemcomber.genetics.store.metadata.Performance;
 import net.lukemcomber.genetics.world.terrain.Terrain;
@@ -64,14 +65,45 @@ public class WorldController {
         final ObjectMapper mapper = new ObjectMapper();
         final JsonNode rootNode = mapper.valueToTree(request);
 
-        final Ecosystem system = new EcoSystemJsonReader().read(rootNode);
-        if (null != system) {
-            response.id = cache.set(system);
-            response.setStatusCode(HttpStatus.OK);
-        } else {
-            response.setMessage("No terrain created.");
-            response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
+        try {
+            final Ecosystem system = new EcoSystemJsonReader().read(rootNode);
+            if (null != system) {
+                response.id = cache.set(system);
+                response.setStatusCode(HttpStatus.OK);
+            } else {
+                response.setMessage("No terrain created.");
+                response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        } catch( final IOException e ){
+            logger.error("",e);
+            response.setMessage(e.getMessage());
         }
+
+        return ResponseEntity.status(response.getStatusCode()).body(response);
+    }
+
+    @GetMapping("v1.0/list")
+    public ResponseEntity<WorldsListResponse> getWorldsList(){
+        /*
+         * DEV NOTE: if we ever add multiple user sessions or authentication, this
+         *    should be put behind admin access
+         */
+        final WorldsListResponse response = new WorldsListResponse();
+        response.setStatusCode(HttpStatus.BAD_REQUEST);
+
+        final List<WorldsListResponse.WorldOverview> overviews = new LinkedList<>();
+        for( final Ecosystem system : cache.values() ){
+            if( null != system ){
+                final WorldsListResponse.WorldOverview overview =  new WorldsListResponse.WorldOverview();
+                overview.active = system.isActive();
+                overview.id = system.getId();
+                //TODO set to real value
+                overview.steppable = true;
+                overviews.add(overview);
+            }
+        }
+        response.worlds = overviews;
+        response.setStatusCode(HttpStatus.OK);
 
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
@@ -90,6 +122,7 @@ public class WorldController {
                     retVal.width = terrain.getSizeOfXAxis();
                     retVal.height = terrain.getSizeOfYAxis();
                     retVal.depth = terrain.getSizeOfZAxis();
+                    retVal.active = system.isActive();
 
                     retVal.id = id;
                     retVal.setStatusCode(HttpStatus.OK);
@@ -108,23 +141,34 @@ public class WorldController {
 
     //TODO may want to make this asynch so we don't tie up a request thread
     @GetMapping("v1.0/{id}/advance")
-    public ResponseEntity<GenericResponse> advanceWorld(@PathVariable(name = "id") final String id,
+    public ResponseEntity<AdvanceWorldResponse> advanceWorld(@PathVariable(name = "id") final String id,
                                                         @RequestParam(name = "turns", required = false, defaultValue = "1") final Integer turns) {
+
+        final AdvanceWorldResponse response = new AdvanceWorldResponse();
 
         if (StringUtils.isNotEmpty(id)) {
             final Ecosystem system = cache.get(id);
             if (null != system) {
-                for (int i = 0; i < turns; ++i) {
-                    system.advance();
+                response.active = system.isActive();
+                if(system.isActive()) {
+
+                    int i = 0;
+                    for (; i < turns; ++i) {
+                        if (!system.advance()) {
+                            response.active = false;
+                            break;
+                        }
+                    }
+                    response.ticksMade = (long) i;
+                    response.setStatusCode(HttpStatus.OK);
+                } else {
+                    response.setMessage(String.format("Simulation for session %s has finish.", id ));
                 }
+            } else {
+                response.setMessage(String.format("Session $s not found.", id));
             }
         }
-        return ResponseEntity.status(HttpStatus.OK).body(new GenericResponse() {
-            @Override
-            public HttpStatus getStatusCode() {
-                return super.getStatusCode();
-            }
-        });
+        return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
     @GetMapping("v1.0/{id}/ecology")
@@ -140,27 +184,30 @@ public class WorldController {
                 response.currentTick = system.getCurrentTick();
                 response.totalDays = system.getTotalDays();
                 response.totalTicks = system.getTotalTicks();
+                response.active = system.isActive();
 
-                //get list of cells
-                final Iterator<Organism> iterator = system.getTerrain().getOrganisms();
-                while (iterator.hasNext()) {
-                    final Organism organism = iterator.next();
-                    final OrganismBody body = new OrganismBody();
-                    body.setId(organism.getUniqueID());
-                    body.setAlive(organism.isAlive());
-                    for (final Cell cell : CellHelper.getAllOrganismsCells(organism.getCells())) {
-                        final SpatialCoordinates spatialCoordinates = cell.getCoordinates();
-                        final CellLocation location;
-                        if (cell instanceof SeedCell) {
-                            location = new SeedCellLocation(spatialCoordinates.xAxis, spatialCoordinates.yAxis,
-                                    spatialCoordinates.zAxis, cell.getCellType(), ((SeedCell) cell).isActivated());
-                        } else {
-                            location = new CellLocation(spatialCoordinates.xAxis, spatialCoordinates.yAxis,
-                                    spatialCoordinates.zAxis, cell.getCellType());
+                if( system.isActive()) {
+                    //get list of cells
+                    final Iterator<Organism> iterator = system.getTerrain().getOrganisms();
+                    while (iterator.hasNext()) {
+                        final Organism organism = iterator.next();
+                        final OrganismBody body = new OrganismBody();
+                        body.setId(organism.getUniqueID());
+                        body.setAlive(organism.isAlive());
+                        for (final Cell cell : CellHelper.getAllOrganismsCells(organism.getCells())) {
+                            final SpatialCoordinates spatialCoordinates = cell.getCoordinates();
+                            final CellLocation location;
+                            if (cell instanceof SeedCell) {
+                                location = new SeedCellLocation(spatialCoordinates.xAxis, spatialCoordinates.yAxis,
+                                        spatialCoordinates.zAxis, cell.getCellType(), ((SeedCell) cell).isActivated());
+                            } else {
+                                location = new CellLocation(spatialCoordinates.xAxis, spatialCoordinates.yAxis,
+                                        spatialCoordinates.zAxis, cell.getCellType());
+                            }
+                            body.addCell(location);
                         }
-                        body.addCell(location);
+                        response.organismBodies.add(body);
                     }
-                    response.organismBodies.add(body);
                 }
                 response.setStatusCode(HttpStatus.OK);
             }
@@ -285,12 +332,12 @@ public class WorldController {
                 }
                 try {
                     if( null != clazz ) {
-                        final MetadataStore<net.lukemcomber.genetics.store.metadata.Genome> genomeMetadataStore =
-                                MetadataStoreFactory.getMetadataStore(ecosystem.getTerrain().getUUID().toString(), clazz,
-                                        ecosystem.getTerrain().getProperties());
+                        final MetadataStoreGroup sessionGroup =
+                                MetadataStoreFactory.getMetadataStore(worldId, ecosystem.getTerrain().getProperties());
 
-                        if (!genomeMetadataStore.expire()) {
-                            response.log = mapper.valueToTree(genomeMetadataStore.retrieve());
+                        final MetadataStore<?> store = sessionGroup.get(clazz);
+                        if (!store.expire()) {
+                            response.log = mapper.valueToTree(store.retrieve());
                             response.setStatusCode(HttpStatus.OK);
                         } else {
                             response.setMessage("This information has expired or was not collected.");

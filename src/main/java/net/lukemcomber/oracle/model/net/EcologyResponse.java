@@ -22,6 +22,9 @@ public class EcologyResponse extends GenericResponse {
     @JsonProperty("currentTick")
     public int currentTick;
 
+    @JsonProperty("active")
+    public boolean active;
+
     @JsonProperty("organisms")
     public List<OrganismBody> organismBodies = new LinkedList<>();
 

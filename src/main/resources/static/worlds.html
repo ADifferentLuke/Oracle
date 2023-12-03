@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="style/stylesheet.css">
+    <meta charset="UTF-8">
+    <script src="js/jquery-3.7.1.min.js"></script>
+    <script src="js/npm_lodash.min.js"></script>
+
+    <script src="js/viewport.js"></script>
+    <script src="js/geneTable.js"></script>
+    <title>World List</title>
+    <script>
+$(window).on('load', function() {
+
+    $.ajax( {
+        url: "/genetics/v1.0/list",
+        type: "GET",
+        contentType: "application/json",
+        dataType: "json",
+    })
+    .done(function( msg ) {
+        if( msg.worlds ){
+            let worldTitleRow = document.createElement("div");
+            worldTitleRow.className += " div-table-row";
+
+            let idTitleCol = document.createElement("div");
+            idTitleCol.className += " div-table-col-large";
+            $(idTitleCol).html( "World" );
+            $(idTitleCol).css( "font-weight", "bold");
+            worldTitleRow.append( idTitleCol );
+
+            let activeTitleCol = document.createElement("div");
+            activeTitleCol.className += " div-table-col-small";
+            $(activeTitleCol).html( "Active" );
+            $(activeTitleCol).css( "font-weight", "bold");
+            worldTitleRow.append( activeTitleCol );
+
+            let stepTitleCol = document.createElement("div");
+            stepTitleCol.className += " div-table-col-small";
+            $(stepTitleCol).html( "Step-able" );
+            $(stepTitleCol).css( "font-weight", "bold");
+            worldTitleRow.append( stepTitleCol );
+
+            let logTitleCol = document.createElement("div");
+            logTitleCol.className += " div-table-col-small";
+            $(logTitleCol).html( "Step-able" );
+            $(logTitleCol).css( "font-weight", "bold");
+            worldTitleRow.append( logTitleCol );
+
+            $('#worldTable').append(worldTitleRow);
+
+            msg.worlds.forEach(
+                function( world ){
+                    let worldRow = document.createElement("div");
+                    worldRow.className += " div-table-row";
+
+                    let idAnchor = document.createElement('a');
+                    idAnchor.appendChild(document.createTextNode(world.id));
+                    idAnchor.title = world.id;
+                    idAnchor.href = "oracle.html?id=" + world.id;
+
+                    let idcol = document.createElement("div");
+                    idcol.className += " div-table-col-large";
+                    idcol.appendChild(idAnchor);
+                    worldRow.append( idcol );
+
+
+                    let activecol = document.createElement("div");
+                    activecol.className += " div-table-col-small";
+                    $(activecol).html( world.active ? "true" : "false");
+                    worldRow.append( activecol );
+
+                    let stepcol = document.createElement("div");
+                    stepcol.className += " div-table-col-small";
+                    $(stepcol).html( world.steppable );
+                    worldRow.append( stepcol );
+
+                    let logAnchor = document.createElement('a');
+                    logAnchor.appendChild(document.createTextNode("Log"));
+                    logAnchor.title = "Log";
+                    logAnchor.href = "metadata.html?id=" + world.id;
+
+                    let logCol = document.createElement("div");
+                    logCol.className += " div-table-col-small";
+                    $(logCol).append( logAnchor );
+                    worldRow.append( logCol );
+
+                    console.log( "World " + world.id + " is active " + world.active );
+
+                    $('#worldTable').append(worldRow);
+                }
+            );
+        }
+    })
+    .fail(function(msg) {
+        alert("Failed to create world.");
+    });
+});
+    </script>
+</head>
+<body>
+<center><h3>Worlds</h3></center>
+<form>
+<div class="div-table" id="worldTable"></div>
+</form>
+</body>
+</html>

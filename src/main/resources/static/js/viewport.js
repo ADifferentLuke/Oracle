@@ -203,7 +203,7 @@ Display.prototype.advance = function(turns,onSuccess,onFailure){
     })
     .done( msg => {
         if( onSuccess && onSuccess instanceof Function ){
-            onSuccess(this);
+            onSuccess(this,msg);
         }
     })
     .fail(msg => {
@@ -219,6 +219,7 @@ Display.prototype.draw = function(onSuccess,onFailure) {
     this._draw(this,onSuccess,onFailure);
 }
 
+//Called repeatedly
 Display.prototype._draw = function(display,onSuccess,onFailure){
     $.ajax( {
         url: "/genetics/v1.0/" + display.__id + "/ecology",
@@ -228,8 +229,12 @@ Display.prototype._draw = function(display,onSuccess,onFailure){
     })
     .done( msg => {
         display._drawPixels(msg);
+        if( ! msg.active ){
+            //clear poller if theres no more activity
+            clearInterval( this.__refreshInterval );
+        }
         if( onSuccess && onSuccess instanceof Function ){
-            onSuccess(display);
+            onSuccess(display,msg);
         }
     })
     .fail(function(msg) {
