@@ -26,25 +26,55 @@ $(window).on('load', function() {
 
     var a = document.getElementById('yourlinkId');
     $('#detailLink').attr('href',"metadata.html?id=" + param);
+    $('#homeLink').attr('href',"index.html");
 
-    $('#continueButton').click( function(){
-        console.log( "Disabling button");
-        $('#continueButton').prop('disabled',true);
-        let turns = $('#turnCount').val();
-        if( turns ){
-            display.advance(turns,function(display, msg){
-               if( msg.active ){
-                    $('#continueButton').prop('disabled',false);
-               } else {
-                    console.log( "Resize triggered: simulation has ended. Disabling button");
-               }
-            }, function( display, msg){
-                console.log( "Turn advancement failed." );
-            });
-        } else {
-            console.log( "Failed to read value of 'turns'");
-        }
+     $.ajax( {
+        url: "/genetics/v1.0/" + param,
+        type: "GET",
+        contentType: "application/json",
+        dataType: "json"
+    })
+    .done( msg => {
+        if( msg && msg.interactive ){
+         $('#continueButton').click( function(){
+            console.log( "Disabling button");
+            $('#continueButton').prop('disabled',true);
+            let turns = $('#turnCount').val();
+            if( turns ){
+                display.advance(turns,function(display, msg){
+                   if( msg.active ){
+                        $('#continueButton').prop('disabled',false);
+                   } else {
+                        console.log( "Resize triggered: simulation has ended. Disabling button");
+                        var simEndedMessage = document.getElementsByClassName("sim-ended-message");
+
+                        for(var i = 0; i < simEndedMessage.length; i++ ){
+                            simEndedMessage[i].style.display = "block";
+                        }
+
+                   }
+                }, function( display, msg){
+                    console.log( "Turn advancement failed." );
+                });
+            } else {
+                console.log( "Failed to read value of 'turns'");
+            }
+        });
+       } else if( msg && !msg.interactive ){
+            if( msg.active ){
+                console.log( "It's automatic foo!" );
+            }
+       }
+    })
+    .fail(function(msg) {
+        alert( "Could not load world!");
     });
+
+    /*
+     * TODO - We need to loop over display.advance for auto mode
+     */
+
+
 
     let organismDetails = new GenesTable($('#sidebar'),param);
 
@@ -62,15 +92,30 @@ $(window).on('load', function() {
                 if( msg.active ) {
                     $('#continueButton').prop('disabled',false);
                 } else {
-                    console.log( "Resize triggered: simulation has ended. Disabling button");
+                   var simEndedMessage = document.getElementsByClassName("sim-ended-message");
+
+                   for(var i = 0; i < simEndedMessage.length; i++ ){
+                       simEndedMessage[i].style.display = "block";
+                   }
                 }
-            }
+            },
+            undefined,
+        function(display,msg){
+               var simEndedMessage = document.getElementsByClassName("sim-ended-message");
+
+               for(var i = 0; i < simEndedMessage.length; i++ ){
+                   simEndedMessage[i].style.display = "block";
+               }
+        }
         );
 
     window.addEventListener('resize', _.debounce(() => {
         display.resize(null,null);
     }, 500));
 });
+
+
+
 
 
 
@@ -85,7 +130,15 @@ $(window).on('load', function() {
         <div class="world-label">Session:</div>
         <div class="world-id" id="world-id"></div>
         <div></div>
-        <div class="details-link"><a id="detailLink" href="test">Details</a> </div>
+        <div class="details-link">
+            <a id="homeLink" href="test">Home</a>
+            <a id="detailLink" href="test">Details</a>
+        </div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div class="sim-ended-message">Simulation has terminated.</div>
     </div>
     <div id="dashboard" class="dashboard">
     </div>
@@ -101,11 +154,11 @@ $(window).on('load', function() {
         <div>Tick:</div>
         <div id="currentTickDisplay"></div>
     </div>
-        <div class="footer-button">
-            <div class="center-dev">Turns</div>
-            <input class="center-dev" id="turnCount" name="turnCount" size=9 type="text" value="1">
-            <button id="continueButton" name="continueButton" class="center-dev" disabled>&gt;&gt;&gt;</button>
-        </div>
+    <div class="footer-button">
+        <div class="center-dev">Turns</div>
+        <input class="center-dev" id="turnCount" name="turnCount" size=9 type="text" value="1">
+        <button id="continueButton" name="continueButton" class="center-dev" disabled>&gt;&gt;&gt;</button>
+    </div>
 </div>
 </body>
 </html>

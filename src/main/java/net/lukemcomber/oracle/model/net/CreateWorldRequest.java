@@ -8,12 +8,19 @@ package net.lukemcomber.oracle.model.net;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import net.lukemcomber.genetics.SteppableEcosystem;
 
 import java.util.LinkedList;
 import java.util.List;
 
+import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.DEDUCTION;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class CreateWorldRequest {
+@JsonTypeInfo(use = DEDUCTION)
+@JsonSubTypes( {@JsonSubTypes.Type( CreateSteppableWorld.class), @JsonSubTypes.Type( CreateAutoWorldRequest.class)})
+public abstract class CreateWorldRequest {
 
     @JsonProperty("world")
     public String worldType;
@@ -25,9 +32,6 @@ public class CreateWorldRequest {
     public long depth;
     @JsonProperty("ticksPerDay")
     public long ticksPerDay;
-    @JsonProperty("ticksPerTurn")
-    public long ticksPerTurn;
-
     @JsonProperty("zoo")
     public List<String> zoology = new LinkedList<>();
 }

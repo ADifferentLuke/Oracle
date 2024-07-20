@@ -43,7 +43,7 @@ $(window).on('load', function() {
 
             let logTitleCol = document.createElement("div");
             logTitleCol.className += " div-table-col-small";
-            $(logTitleCol).html( "Step-able" );
+            $(logTitleCol).html( "&nbsp;" );
             $(logTitleCol).css( "font-weight", "bold");
             worldTitleRow.append( logTitleCol );
 
@@ -70,9 +70,10 @@ $(window).on('load', function() {
                     $(activecol).html( world.active ? "true" : "false");
                     worldRow.append( activecol );
 
+
                     let stepcol = document.createElement("div");
                     stepcol.className += " div-table-col-small";
-                    $(stepcol).html( world.steppable );
+                    $(stepcol).html( world.steppable ? "true" : "false" );
                     worldRow.append( stepcol );
 
                     let logAnchor = document.createElement('a');

@@ -210,6 +210,12 @@ textarea {
 .details-link {
     align-self: end;
 }
+.sim-ended-message {
+    align-self: end;
+    margin-left: auto;
+    margin-right: 0;
+    display: none;
+}
 
 .footer-row {
     grid-area: footer;
@@ -311,4 +317,12 @@ Meta data styles
   display: table-cell;
   width: 10%;
   background-color: #ccc;
+}
+
+.auto-env {
+    display: none;
+}
+
+.int-env {
+    display: block;
 }

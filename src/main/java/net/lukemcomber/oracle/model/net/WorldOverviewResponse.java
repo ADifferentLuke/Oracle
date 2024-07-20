@@ -22,4 +22,7 @@ public class WorldOverviewResponse extends GenericResponse {
 
     @JsonProperty("active")
     public boolean active;
+
+    @JsonProperty("interactive")
+    public boolean interactive;
 }

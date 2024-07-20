@@ -25,7 +25,7 @@ function showData(evt,type){
     let searchParams = new URLSearchParams(window.location.search);
     let param = searchParams.get("id");
 
-    if( type == "BACK" ){
+    if( type == "VIEW" ){
         window.location.href = "/oracle.html?id=" + param;
     } else {
         $.ajax( {
@@ -70,7 +70,7 @@ function showData(evt,type){
         <button class="tablinks" onclick="showData(event, 'GENEALOGY')">Genealogy</button>
         <button class="tablinks" onclick="showData(event, 'GENOME')">Genome</button>
         <button class="tablinks" onclick="showData(event, 'PERFORMANCE')">Performance</button>
-        <button class="tablinks" onclick="showData(event, 'BACK')">Back</button>
+        <button class="tablinks" onclick="showData(event, 'VIEW')">View</button>
     </div>
     <div></div>
     <div></div>

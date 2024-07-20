@@ -5,10 +5,13 @@
 
 function Display(   id,detailsView, dashboard,
                     totalTicksDisplay, totalDaysDisplay, currentTickDisplay, domCanvasElement,
-                    onSuccess, onFailure ) {
+                    onSuccess, onFailure, onEnd ) {
     this.__id = id;
     this.__canvas = domCanvasElement;
     this.__dashboard = dashboard;
+    this.__onEnd = onEnd;
+    this.__onSuccess = onSuccess;
+    this.__onFailure = onFailure;
 
     //TODO how do I vierfy detailsPane is a GeneTable
     this.__detailsView = detailsView;
@@ -24,7 +27,7 @@ function Display(   id,detailsView, dashboard,
     this.__pixelWidth = -1;
     this.__pixelHeight = -1;
 
-    this.resize(onSuccess,onFailure);
+    this.resize(onSuccess,onFailure,onEnd);
 
 
 
@@ -114,7 +117,7 @@ Display.prototype._onClick = function(event){
             });
 }
 
-Display.prototype.resize = function(onSuccess,onFailure) {
+Display.prototype.resize = function(onSuccess,onFailure,onEnd) {
 
     //stop refresh thread
     if( this.__refreshInterval ){
@@ -129,7 +132,7 @@ Display.prototype.resize = function(onSuccess,onFailure) {
         dataType: "json"
     })
     .done( msg => {
-        this._calculateNewSize(msg,onSuccess,onFailure);
+        this._calculateNewSize(msg,onSuccess,onFailure,onEnd);
     })
     .fail(function(msg) {
         console.log( "failed to create world on resize.");
@@ -139,7 +142,7 @@ Display.prototype.resize = function(onSuccess,onFailure) {
     });
 }
 
-Display.prototype._calculateNewSize = function(msg, onSuccess, onFailure){
+Display.prototype._calculateNewSize = function(msg, onSuccess, onFailure, onEnd){
     console.log("_calculateNewSize(" + msg + ")");
     if(msg){
         let x = msg.width;
@@ -169,9 +172,9 @@ Display.prototype._calculateNewSize = function(msg, onSuccess, onFailure){
                 console.log( "Leftover height: " + this.__pixelHeightOffset );
 
                 console.log( "Pixels will be [" + this.__pixelWidth + "x" + this.__pixelHeight + "]");
-                this.draw(onSuccess,onFailure);
+                this.draw(onSuccess,onFailure,onEnd);
                 if( ! this.__refreshInterval ){
-                    this.__refreshInterval = setInterval( this._draw, 1000, this );
+                    this.__refreshInterval = setInterval( this._draw, 500, this );
                 }
 
            } else {
@@ -215,12 +218,12 @@ Display.prototype.advance = function(turns,onSuccess,onFailure){
     });
 
 }
-Display.prototype.draw = function(onSuccess,onFailure) {
-    this._draw(this,onSuccess,onFailure);
+Display.prototype.draw = function(onSuccess,onFailure,onEnd) {
+    this._draw(this);
 }
 
 //Called repeatedly
-Display.prototype._draw = function(display,onSuccess,onFailure){
+Display.prototype._draw = function(display){
     $.ajax( {
         url: "/genetics/v1.0/" + display.__id + "/ecology",
         type: "GET",
@@ -231,15 +234,18 @@ Display.prototype._draw = function(display,onSuccess,onFailure){
         display._drawPixels(msg);
         if( ! msg.active ){
             //clear poller if theres no more activity
-            clearInterval( this.__refreshInterval );
+            clearInterval( display.__refreshInterval );
+            if( display.__onEnd && display.__onEnd instanceof Function ){
+                display.__onEnd(display,msg);
+            }
         }
-        if( onSuccess && onSuccess instanceof Function ){
-            onSuccess(display,msg);
+        if( display.__onSuccess && display.__onSuccess instanceof Function ){
+            display.__onSuccess(display,msg);
         }
     })
     .fail(function(msg) {
-        if( onFailure && onFailure instanceof Function ){
-            onFailure(display,msg);
+        if( display.__onFailure && display.__onFailure instanceof Function ){
+            display.__onFailure(display,msg);
         }
     });
 }
@@ -301,6 +307,6 @@ Display.prototype.__drawCell = function(cell,isAlive){
             }
         }
         ctx.fillRect( x, this.__canvas.height - y - this.__pixelHeight, this.__pixelWidth, this.__pixelHeight);
-        console.log( "Set pixel: [" + x + "," + (this.__canvas.height - y - this.__pixelHeight) + "]");
+        //console.log( "Set pixel: [" + x + "," + (this.__canvas.height - y - this.__pixelHeight) + "]");
     }
 }

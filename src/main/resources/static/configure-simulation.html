@@ -25,15 +25,31 @@ $(window).on('load', function() {
             var zoology = $("#zoology").val().split('\n');
             var world = $('#worldSelect option:selected').val();
 
+            var envType = $('#env option:selected').val();
+            var maxDays = $("#maxDays").val();
+            var tickDelay = $("#tickDelay").val();
+            var cataclysmProbability = $("#catProb").val();
+            var cataclysmSurvivalRate = $("#catSurvivalProb").val();
+
+            //TODO this can be structured better
             var postData = {
                 "world" : world,
                 "width" : x ? x : 90,
                 "height" : y ? y : 90,
                 "depth" : z ? z : 90,
-                "ticksPerTurn" : ticksPerTurn ? ticksPerTurn : 1,
                 "ticksPerDay" : ticksPerDay ? ticksPerDay : 10,
                 "zoo" : zoology
             };
+
+            if( "auto" === envType ){
+                //Add the extra options
+                postData["maxDays"] = maxDays ? maxDays : 1000000;
+                postData["tickDelay"] = tickDelay ? tickDelay : 10;
+                postData["cataclysmProbability"] = cataclysmProbability ? cataclysmProbability : 0.001;
+                postData["cataclysmSurvivalRate"] = cataclysmSurvivalRate ? cataclysmSurvivalRate : 0.10;
+            } else {
+                postData["ticksPerTurn"] = ticksPerTurn ? ticksPerTurn : 1;
+            }
             console.log(postData);
 
             $.ajax( {
@@ -47,12 +63,38 @@ $(window).on('load', function() {
                 window.location.href = "/oracle.html?id=" + msg.id;
             })
             .fail(function(msg) {
-                alert("Failed to create world.");
+                if( msg.responseJSON && msg.responseJSON.message ){
+                    alert(msg.responseJSON.message)
+                }
             });
         }
     });
 
 })
+
+function toggleOptions(value){
+    var autoDivTags = document.getElementsByClassName("auto-env");
+    var intDivTags = document.getElementsByClassName("int-env");
+
+    if( value === "auto" ){
+        for(var i = 0; i < autoDivTags.length; i++){
+            console.log( "Toggling ... " );
+            autoDivTags[i].style.display = "block";
+        }
+        for(var i = 0; i < intDivTags.length; i++ ){
+            intDivTags[i].style.display = "none";
+        }
+    } else if( value === "interactive" ){
+        for(var i = 0; i < autoDivTags.length; i++){
+            autoDivTags[i].style.display = "none";
+        }
+        for(var i = 0; i < intDivTags.length; i++ ){
+            intDivTags[i].style.display = "block";
+        }
+    }
+    console.log(value);
+}
+
 
 
     </script>
@@ -72,19 +114,44 @@ $(window).on('load', function() {
     <div class="form-input-section">
         <div class="right-label">Width:</div>
         <input id="xDimension" name="xDimension" type="text" placeholder="90">
-        <div class="right-label">Ticks Per Day:</div>
-        <input id="ticksPerDay" name="ticksPerDay" type="text" placeholder="10" class="">
+        <label class="right-label" for="env">Environment:</label>
+        <select name="env" id="env" onchange="toggleOptions(this.value);">
+            <option value="interactive">Interactive</option>
+            <option value="auto">Automated</option>
+        </select>
+
         <div></div>
+
         <label class="right-label" for="yDimension">Height:</label>
         <input id="yDimension" name="yDimension" type="text" placeholder="90" class="">
-        <label class="right-label" for="ticksPerTurn">Ticks Per Turn:</label>
-        <input id="ticksPerTurn" name="ticksPerTurn" type="text" placeholder="1" class="">
+        <div class="right-label">Ticks Per Day:</div>
+        <input id="ticksPerDay" name="ticksPerDay" type="text" placeholder="10" class="">
+
+
         <div></div>
+
         <label class="right-label" for="zDimension">Depth:</label>
         <input id="zDimension" name="zDimension" type="text" placeholder="90" class="">
+        <label class="right-label int-env" for="ticksPerTurn">Ticks Per Turn:</label>
+        <input class="int-env" id="ticksPerTurn" name="ticksPerTurn" type="text" placeholder="1" class="">
+        <label class="right-label auto-env" for="maxDays">Maximum Days</label>
+        <input class="auto-env" id="maxDays" name="maxDays" type="text" placeholder="10000000" >
+
         <div></div>
+
+
+        <label class="right-label auto-env" for="tickDelay">Tick Delay (ms)</label>
+        <input  id="tickDelay" name="tickDelay" class="auto-env" type="text" placeholder="10" >
+        <label class="right-label auto-env" for="catSurvivalProb">Cataclysm Survival Rate</label>
+        <input id="catSurvivalProb" class="auto-env" name="catSurvivalProb" type="text" placeholder=".10" >
+
         <div></div>
+
+        <label class="right-label auto-env" for="catProb">Cataclysm Probability</label>
+        <input id="catProb" class="auto-env" name="catProb" type="text" placeholder=".0001" >
+
         <div></div>
+
     </div>
     <div class="form-text-section">
         <div class="form-text-title">Zoology</div>

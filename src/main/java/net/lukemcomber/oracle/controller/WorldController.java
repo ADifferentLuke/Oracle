@@ -8,6 +8,7 @@ package net.lukemcomber.oracle.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.lukemcomber.genetics.SteppableEcosystem;
 import net.lukemcomber.genetics.biology.Cell;
 import net.lukemcomber.genetics.biology.Gene;
 import net.lukemcomber.genetics.biology.Genome;
@@ -74,8 +75,8 @@ public class WorldController {
                 response.setMessage("No terrain created.");
                 response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
             }
-        } catch( final IOException e ){
-            logger.error("",e);
+        } catch (final RuntimeException | IOException e) {
+            logger.error("", e);
             response.setMessage(e.getMessage());
         }
 
@@ -83,7 +84,7 @@ public class WorldController {
     }
 
     @GetMapping("v1.0/list")
-    public ResponseEntity<WorldsListResponse> getWorldsList(){
+    public ResponseEntity<WorldsListResponse> getWorldsList() {
         /*
          * DEV NOTE: if we ever add multiple user sessions or authentication, this
          *    should be put behind admin access
@@ -92,13 +93,12 @@ public class WorldController {
         response.setStatusCode(HttpStatus.BAD_REQUEST);
 
         final List<WorldsListResponse.WorldOverview> overviews = new LinkedList<>();
-        for( final Ecosystem system : cache.values() ){
-            if( null != system ){
-                final WorldsListResponse.WorldOverview overview =  new WorldsListResponse.WorldOverview();
+        for (final Ecosystem system : cache.values()) {
+            if (null != system) {
+                final WorldsListResponse.WorldOverview overview = new WorldsListResponse.WorldOverview();
                 overview.active = system.isActive();
                 overview.id = system.getId();
-                //TODO set to real value
-                overview.steppable = true;
+                overview.steppable = system instanceof SteppableEcosystem;
                 overviews.add(overview);
             }
         }
@@ -123,7 +123,7 @@ public class WorldController {
                     retVal.height = terrain.getSizeOfYAxis();
                     retVal.depth = terrain.getSizeOfZAxis();
                     retVal.active = system.isActive();
-
+                    retVal.interactive = system instanceof SteppableEcosystem;
                     retVal.id = id;
                     retVal.setStatusCode(HttpStatus.OK);
                 } else {
@@ -142,27 +142,30 @@ public class WorldController {
     //TODO may want to make this asynch so we don't tie up a request thread
     @GetMapping("v1.0/{id}/advance")
     public ResponseEntity<AdvanceWorldResponse> advanceWorld(@PathVariable(name = "id") final String id,
-                                                        @RequestParam(name = "turns", required = false, defaultValue = "1") final Integer turns) {
+                                                             @RequestParam(name = "turns", required = false, defaultValue = "1") final Integer turns) {
 
         final AdvanceWorldResponse response = new AdvanceWorldResponse();
 
         if (StringUtils.isNotEmpty(id)) {
             final Ecosystem system = cache.get(id);
             if (null != system) {
-                response.active = system.isActive();
-                if(system.isActive()) {
-
-                    int i = 0;
-                    for (; i < turns; ++i) {
-                        if (!system.advance()) {
-                            response.active = false;
-                            break;
+                if (system instanceof SteppableEcosystem) {
+                    response.active = system.isActive();
+                    if (system.isActive()){
+                        int i = 0;
+                        for (; i < turns; ++i) {
+                            if (!system.advance()) {
+                                response.active = false;
+                                break;
+                            }
                         }
+                        response.ticksMade = (long) i;
+                        response.setStatusCode(HttpStatus.OK);
+                    } else {
+                        response.setMessage(String.format("Simulation %s is not interactive.", id));
                     }
-                    response.ticksMade = (long) i;
-                    response.setStatusCode(HttpStatus.OK);
                 } else {
-                    response.setMessage(String.format("Simulation for session %s has finish.", id ));
+                    response.setMessage(String.format("Simulation unable to advance session %s.", id));
                 }
             } else {
                 response.setMessage(String.format("Session $s not found.", id));
@@ -186,7 +189,7 @@ public class WorldController {
                 response.totalTicks = system.getTotalTicks();
                 response.active = system.isActive();
 
-                if( system.isActive()) {
+                if (system.isActive()) {
                     //get list of cells
                     final Iterator<Organism> iterator = system.getTerrain().getOrganisms();
                     while (iterator.hasNext()) {
@@ -331,7 +334,7 @@ public class WorldController {
 
                 }
                 try {
-                    if( null != clazz ) {
+                    if (null != clazz) {
                         final MetadataStoreGroup sessionGroup =
                                 MetadataStoreFactory.getMetadataStore(worldId, ecosystem.getTerrain().getProperties());
 
