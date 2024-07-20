@@ -7,9 +7,8 @@ package net.lukemcomber.oracle.model.net;
 
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import net.lukemcomber.oracle.model.GenericResponse;
 
-public class WorldOverviewResponse extends GenericResponse {
+public abstract class WorldOverview {
 
     @JsonProperty("id")
     public String id;
@@ -22,7 +21,6 @@ public class WorldOverviewResponse extends GenericResponse {
 
     @JsonProperty("active")
     public boolean active;
-
     @JsonProperty("interactive")
     public boolean interactive;
 }

@@ -35,7 +35,8 @@ $(window).on('load', function() {
         dataType: "json"
     })
     .done( msg => {
-        if( msg && msg.interactive ){
+        if( msg && msg.result.interactive ){
+
          $('#continueButton').click( function(){
             console.log( "Disabling button");
             $('#continueButton').prop('disabled',true);
@@ -60,11 +61,12 @@ $(window).on('load', function() {
                 console.log( "Failed to read value of 'turns'");
             }
         });
-       } else if( msg && !msg.interactive ){
-            if( msg.active ){
-                console.log( "It's automatic foo!" );
-            }
-       }
+
+           var objsToShow = document.getElementsByClassName("interactive");
+           for(var i = 0; i < objsToShow.length; i++){
+                objsToShow[i].style.display = "block";
+           }
+        }
     })
     .fail(function(msg) {
         alert( "Could not load world!");
@@ -155,9 +157,9 @@ $(window).on('load', function() {
         <div id="currentTickDisplay"></div>
     </div>
     <div class="footer-button">
-        <div class="center-dev">Turns</div>
-        <input class="center-dev" id="turnCount" name="turnCount" size=9 type="text" value="1">
-        <button id="continueButton" name="continueButton" class="center-dev" disabled>&gt;&gt;&gt;</button>
+        <div class="center-dev interactive">Turns</div>
+        <input class="center-dev interactive" id="turnCount" name="turnCount" size=9 type="text" value="1">
+        <button id="continueButton" name="continueButton" class="center-dev interactive" disabled>&gt;&gt;&gt;</button>
     </div>
 </div>
 </body>

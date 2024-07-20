@@ -10,10 +10,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.http.HttpStatus;
 
-import java.util.HashMap;
-
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public abstract class GenericResponse {
+public abstract class BasicResponse {
 
     private String message;
     @JsonIgnore

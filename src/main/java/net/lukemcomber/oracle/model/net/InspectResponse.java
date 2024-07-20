@@ -8,12 +8,12 @@ package net.lukemcomber.oracle.model.net;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import net.lukemcomber.genetics.model.SpatialCoordinates;
-import net.lukemcomber.oracle.model.GenericResponse;
+import net.lukemcomber.oracle.model.BasicResponse;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class InspectResponse extends GenericResponse {
+public class InspectResponse extends BasicResponse {
 
     @JsonProperty("coordinates")
     private SpatialCoordinates coordinates = null;

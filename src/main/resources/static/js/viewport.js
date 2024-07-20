@@ -132,12 +132,12 @@ Display.prototype.resize = function(onSuccess,onFailure,onEnd) {
         dataType: "json"
     })
     .done( msg => {
-        this._calculateNewSize(msg,onSuccess,onFailure,onEnd);
+        this._calculateNewSize(msg.result,onSuccess,onFailure,onEnd);
     })
     .fail(function(msg) {
         console.log( "failed to create world on resize.");
         if( onFailure && onFailure instanceof Function ){
-            onFailure(this,msg);
+            onFailure(this,msg.result);
         }
     });
 }

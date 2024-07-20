@@ -2,7 +2,7 @@ package net.lukemcomber.oracle.model.net;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class CreateAutoWorldRequest extends CreateWorldRequest{
+public class AutomatedOverview extends WorldOverview {
 
     @JsonProperty("maxDays")
     public long maxDays;

@@ -8,6 +8,7 @@ package net.lukemcomber.oracle.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.lukemcomber.genetics.AutomaticEcosystem;
 import net.lukemcomber.genetics.SteppableEcosystem;
 import net.lukemcomber.genetics.biology.Cell;
 import net.lukemcomber.genetics.biology.Gene;
@@ -33,7 +34,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.configurationprocessor.json.JSONArray;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -109,23 +109,52 @@ public class WorldController {
     }
 
     @GetMapping("v1.0/{id}")
-    public ResponseEntity<WorldOverviewResponse> getWorldSummary(@PathVariable final String id) {
-        final WorldOverviewResponse retVal = new WorldOverviewResponse();
+    public ResponseEntity<GenericResponse<WorldOverview>> getWorldSummary(@PathVariable final String id) {
+        final GenericResponse<WorldOverview> retVal = new GenericResponse<>();
 
         retVal.setStatusCode(HttpStatus.BAD_REQUEST);
 
         if (StringUtils.isNotEmpty(id)) {
             final Ecosystem system = cache.get(id);
             if (null != system) {
+                final WorldOverview overview;
+
                 final Terrain terrain = system.getTerrain();
                 if (null != terrain) {
-                    retVal.width = terrain.getSizeOfXAxis();
-                    retVal.height = terrain.getSizeOfYAxis();
-                    retVal.depth = terrain.getSizeOfZAxis();
-                    retVal.active = system.isActive();
-                    retVal.interactive = system instanceof SteppableEcosystem;
-                    retVal.id = id;
-                    retVal.setStatusCode(HttpStatus.OK);
+                    if (system instanceof SteppableEcosystem) {
+                        final SteppableEcosystem steppableEcosystem = (SteppableEcosystem) system;
+                        overview = new SteppableOverview();
+                        ((SteppableOverview) overview).turnsPerTick = steppableEcosystem.getTicksPerTurn();
+                        overview.interactive = true;
+                        overview.width = terrain.getSizeOfXAxis();
+                        overview.height = terrain.getSizeOfYAxis();
+                        overview.depth = terrain.getSizeOfZAxis();
+                        overview.active = system.isActive();
+                        overview.id = id;
+                        retVal.result = overview;
+                        retVal.setStatusCode(HttpStatus.OK);
+                    } else if (system instanceof AutomaticEcosystem) {
+
+                        final AutomaticEcosystem automaticEcosystem = (AutomaticEcosystem) system;
+                        overview = new AutomatedOverview();
+                        ((AutomatedOverview) overview).maxDays = automaticEcosystem.getMaxDays();
+                        ((AutomatedOverview) overview).tickDelay = automaticEcosystem.getTickDelayMs();
+                        ((AutomatedOverview) overview).cataclysmProbability = automaticEcosystem.getCatastrophicProbability();
+                        ((AutomatedOverview) overview).cataclysmSurvivalRate = automaticEcosystem.getCatastrophicSurvivalRate();
+
+                        overview.interactive = false;
+                        overview.width = terrain.getSizeOfXAxis();
+                        overview.height = terrain.getSizeOfYAxis();
+                        overview.depth = terrain.getSizeOfZAxis();
+                        overview.active = system.isActive();
+                        overview.id = id;
+                        retVal.result = overview;
+                        retVal.setStatusCode(HttpStatus.OK);
+                    } else {
+                        retVal.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
+                        retVal.setMessage("Unrecognized ecosystem type. Lookup failed.");
+                    }
+
                 } else {
                     retVal.setStatusCode(HttpStatus.BAD_REQUEST);
                     retVal.setMessage("Terrain " + id + " found but was null.");
@@ -151,7 +180,7 @@ public class WorldController {
             if (null != system) {
                 if (system instanceof SteppableEcosystem) {
                     response.active = system.isActive();
-                    if (system.isActive()){
+                    if (system.isActive()) {
                         int i = 0;
                         for (; i < turns; ++i) {
                             if (!system.advance()) {

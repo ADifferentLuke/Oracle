@@ -14,29 +14,66 @@
     <script src="js/jquery-3.7.1.min.js"></script>
     <script src=https://cdn.jsdelivr.net/npm/pretty-print-json@2.0/dist/pretty-print-json.min.js></script>
     <script>
+
+let content = null;
+let title = null;
+
 $(window).on('load', function() {
     let searchParams = new URLSearchParams(window.location.search);
     let param = searchParams.get("id");
     $('#metaTitle').html("Session: " + param);
 });
 
+function downloadData(){
+    if( content ){
+        var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(content,null,2));
+        var downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href",     dataStr);
+        downloadAnchorNode.setAttribute("download", title + ".json");
+        document.body.appendChild(downloadAnchorNode); // required for firefox
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    } else {
+        alert( "Please select data to download first" );
+    }
+}
+
 function showData(evt,type){
 
     let searchParams = new URLSearchParams(window.location.search);
     let param = searchParams.get("id");
+    title = param + "--" + type.toLowerCase();
 
     if( type == "VIEW" ){
         window.location.href = "/oracle.html?id=" + param;
+    } else if( type == "HOME" ){
+        window.location.href = "/index.html";
     } else {
+        var queryPath = "/genetics/v1.0/" + param + "/log/" + type;
+        if( type == "OVERVIEW" ){
+            queryPath = "/genetics/v1.0/" + param;
+        }
+
         $.ajax( {
-            url: "/genetics/v1.0/" + param + "/log/" + type,
+            url: queryPath,
                     type: "GET",
                     contentType: "application/json",
                     dataType: "json"
                 })
                 .done(function( msg ) {
                     if( msg.log ){
+                        content = msg.log;
                         const html = prettyPrintJson.toHtml(msg.log,
+                        {
+                            "indent" : " ",
+                            "trailingComma": false,
+                            "lineNumbers": true,
+                            "quoteKeys": true
+                            });
+                        $('#display').html(html);
+                    } else if (msg.result) {
+                        content = msg.result;
+                        const html = prettyPrintJson.toHtml(msg.result,
                         {
                             "indent" : " ",
                             "trailingComma": false,
@@ -67,10 +104,13 @@ function showData(evt,type){
     <div></div>
     <div></div>
     <div class="tab">
-        <button class="tablinks" onclick="showData(event, 'GENEALOGY')">Genealogy</button>
-        <button class="tablinks" onclick="showData(event, 'GENOME')">Genome</button>
-        <button class="tablinks" onclick="showData(event, 'PERFORMANCE')">Performance</button>
-        <button class="tablinks" onclick="showData(event, 'VIEW')">View</button>
+        <button class="lefttab" onclick="showData(event, 'HOME')">Home</button>
+        <button class="lefttab" onclick="showData(event, 'OVERVIEW')">Overview</button>
+        <button class="lefttab" onclick="showData(event, 'GENEALOGY')">Genealogy</button>
+        <button class="lefttab" onclick="showData(event, 'GENOME')">Genome</button>
+        <button class="lefttab" onclick="showData(event, 'PERFORMANCE')">Performance</button>
+        <button class="lefttab" onclick="showData(event, 'VIEW')">View</button>
+        <button class="righttab" onclick="downloadData()">Download</button>
     </div>
     <div></div>
     <div></div>
