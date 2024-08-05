@@ -60,7 +60,13 @@ $(window).on('load', function() {
                 data: JSON.stringify(postData)
             })
             .done(function( msg ) {
-                window.location.href = "/oracle.html?id=" + msg.id;
+                var envType = $('#env option:selected').val();
+
+                if( "auto" === envType ){
+                    window.location.href = "/watch-simulation.html?id=" + msg.id;
+                } else {
+                    window.location.href = "/oracle.html?id=" + msg.id;
+                }
             })
             .fail(function(msg) {
                 if( msg.responseJSON && msg.responseJSON.message ){
@@ -159,7 +165,8 @@ function toggleOptions(value){
             <!--div class="form-text-input"><textarea class="zoo-input" rows="10" id="zoology" name="zoology">(45,45,3),0209007802090078020900780209007802090078020900780209007802090078020900780209007802090078020900780209007802090078020900780209007802090078020900780209007802090078</textarea-->
         <!--    "0202090c0202090c0202090c0206090c0202090c0202090c920209040282090c0202090c0602090c0202290c0202090c0202090c0202090c0202090c0282090c0302090c0202090c0200090c0202090c" -->
 
-        <div class="form-text-input"><textarea class="zoo-input" rows="10" id="zoology" name="zoology">(45,45,3),0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c</textarea>
+        <!-- ROOT GOD div class="form-text-input"><textarea class="zoo-input" rows="10" id="zoology" name="zoology">(45,45,3),0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c</textarea-->
+        <div class="form-text-input"><textarea class="zoo-input" rows="10" id="zoology" name="zoology">(45,45,3),0000000001000000140000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f000000</textarea>
         </div>
         <div class="form-text-button">
             <button id="submitButton" name="submitButton" class="btn btn-primary">Begin</button>

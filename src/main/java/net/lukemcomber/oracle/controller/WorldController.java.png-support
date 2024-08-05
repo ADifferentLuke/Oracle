@@ -26,12 +26,7 @@ import net.lukemcomber.genetics.Ecosystem;
 import net.lukemcomber.genetics.store.MetadataStore;
 import net.lukemcomber.genetics.store.MetadataStoreFactory;
 import net.lukemcomber.genetics.store.MetadataStoreGroup;
-import net.lukemcomber.genetics.store.SearchableMetadataStore;
-import net.lukemcomber.genetics.store.metadata.Environment;
 import net.lukemcomber.genetics.store.metadata.Performance;
-import net.lukemcomber.genetics.utilities.SimpleSimulator;
-import net.lukemcomber.genetics.utilities.model.SimpleSimulation;
-import net.lukemcomber.genetics.utilities.model.SimulationSessions;
 import net.lukemcomber.genetics.world.terrain.Terrain;
 import net.lukemcomber.genetics.world.terrain.TerrainProperty;
 import net.lukemcomber.oracle.model.*;
@@ -42,19 +37,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @RestController
 @RequestMapping("genetics")
@@ -62,10 +53,9 @@ public class WorldController {
 
     private Logger logger = LoggerFactory.getLogger(WorldController.class);
 
-    private final static AtomicBoolean runningSimulation = new AtomicBoolean(false);
-
     public enum AvailableMetadata {
-        ENVIRONMENT,
+        GENOME,
+        GENEALOGY,
         PERFORMANCE
     }
 
@@ -99,52 +89,6 @@ public class WorldController {
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
-    @GetMapping("v1/start-auto-simulation")
-    public ResponseEntity startAutoSimulation() throws IOException {
-        if (!runningSimulation.get()) {
-            synchronized (runningSimulation) {
-                if (!runningSimulation.get()) {
-
-
-                    final SimpleSimulation simulationParameters = new SimpleSimulation();
-
-                    simulationParameters.epochs = 20;
-                    simulationParameters.height = 400;
-                    simulationParameters.width = 800;
-                    simulationParameters.maxDays = 1000;
-                    simulationParameters.ticksPerDay = 10;
-                    simulationParameters.initialPopulation = 1000;
-                    simulationParameters.reusePopulation = 50;
-                    simulationParameters.name = "Auto-Sim";
-
-                    runningSimulation.set(true);
-                    final File tmpFilePath = Files.createTempFile("store-", "filter").toFile();
-                    final SimpleSimulator simulator = new SimpleSimulator(simulationParameters, tmpFilePath);
-                    cache.addSimulationSession(simulator.getSessions());
-
-                    final Runnable runThread = () -> {
-                        try {
-                            simulator.run();
-                        } catch (IOException | InterruptedException e) {
-                            throw new RuntimeException(e);
-                        } finally {
-                            synchronized (runningSimulation) {
-                                runningSimulation.set(false);
-                            }
-                        }
-                    };
-                    Thread thread = new Thread(runThread);
-                    thread.setDaemon(true);
-                    thread.setName("auto-simulation");
-                    thread.start();
-                }
-            }
-        }
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Location", "/worlds.html");
-        return new ResponseEntity<String>(headers, HttpStatus.FOUND);
-    }
-
     @GetMapping("v1.0/list")
     public ResponseEntity<WorldsListResponse> getWorldsList() {
         /*
@@ -161,7 +105,6 @@ public class WorldController {
                 overview.active = system.isActive();
                 overview.id = system.getId();
                 overview.steppable = system instanceof SteppableEcosystem;
-                overview.name = system.getName();
                 overviews.add(overview);
             }
         }
@@ -172,9 +115,7 @@ public class WorldController {
     }
 
     @GetMapping("v1.0/{id}")
-    public ResponseEntity<GenericResponse<WorldOverview>> getWorldSummary(@PathVariable final String id,
-                                                                          @RequestParam(value = "verbose", defaultValue = "false")
-                                                                          final boolean verbose) {
+    public ResponseEntity<GenericResponse<WorldOverview>> getWorldSummary(@PathVariable final String id) {
         final GenericResponse<WorldOverview> retVal = new GenericResponse<>();
 
         retVal.setStatusCode(HttpStatus.BAD_REQUEST);
@@ -186,9 +127,6 @@ public class WorldController {
 
                 final Terrain terrain = system.getTerrain();
                 if (null != terrain) {
-
-                    // TODO - I hate this duplicate code, we can clean this up with re-design
-
                     if (system instanceof SteppableEcosystem) {
                         final SteppableEcosystem steppableEcosystem = (SteppableEcosystem) system;
                         overview = new SteppableOverview();
@@ -198,17 +136,12 @@ public class WorldController {
                         overview.height = terrain.getSizeOfYAxis();
                         overview.depth = terrain.getSizeOfZAxis();
                         overview.active = system.isActive();
-                        overview.name = system.getName();
                         overview.id = id;
                         overview.totalDays = system.getTotalDays();
                         overview.currentTick = system.getCurrentTick();
                         overview.totalTicks = system.getTotalTicks();
                         overview.currentOrganismCount = system.getTerrain().getOrganismCount();
                         overview.totalOrganismCount = system.getTerrain().getTotalOrganismCount();
-                        overview.properties = system.getProperties().toMap();
-                        if( verbose ){
-                            overview.initialPopulation = system.getInitialPopulation();
-                        }
                         retVal.result = overview;
                         retVal.setStatusCode(HttpStatus.OK);
                     } else if (system instanceof AutomaticEcosystem) {
@@ -217,6 +150,8 @@ public class WorldController {
                         overview = new AutomatedOverview();
                         ((AutomatedOverview) overview).maxDays = automaticEcosystem.getMaxDays();
                         ((AutomatedOverview) overview).tickDelay = automaticEcosystem.getTickDelayMs();
+                        ((AutomatedOverview) overview).cataclysmProbability = automaticEcosystem.getCatastrophicProbability();
+                        ((AutomatedOverview) overview).cataclysmSurvivalRate = automaticEcosystem.getCatastrophicSurvivalRate();
 
                         overview.interactive = false;
                         overview.width = terrain.getSizeOfXAxis();
@@ -229,12 +164,7 @@ public class WorldController {
                         overview.totalTicks = system.getTotalTicks();
                         overview.currentOrganismCount = system.getTerrain().getOrganismCount();
                         overview.totalOrganismCount = system.getTerrain().getTotalOrganismCount();
-                        overview.name = system.getName();
-                        overview.properties = system.getProperties().toMap();
                         retVal.result = overview;
-                        if( verbose ){
-                            overview.initialPopulation = system.getInitialPopulation();
-                        }
                         retVal.setStatusCode(HttpStatus.OK);
                     } else {
                         retVal.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -290,13 +220,10 @@ public class WorldController {
     }
 
     @GetMapping(path = "v1.0/{id}/ecology/image", produces = "image/jpeg")
-    @Cacheable(value = "nocache", condition = "#result == null")
+    @Cacheable( value = "nocache", condition = "#result == null")
     public BufferedImage getEcologyImage(@PathVariable(name = "id") String id,
-                                         @RequestParam(name = "width", required = false) final Integer imageWidth,
-                                         @RequestParam(name = "height", required = false) final Integer imageHeight) {
-        final long startTime = -System.currentTimeMillis();
-        int organismDebug = 0;
-        long cellCount = 0;
+                                         @RequestParam(name="width",  required = false) final Integer imageWidth,
+                                         @RequestParam(name="height", required = false) final Integer imageHeight) {
         BufferedImage imageOut = null;
 
         if (StringUtils.isNotEmpty(id)) {
@@ -310,21 +237,19 @@ public class WorldController {
                 final int outputHeight = null != imageHeight ? imageHeight : height;
 
                 int cellWidth = outputWidth / witdh;
-                int cellHeight = outputHeight / height;
+                int cellHeight =outputHeight / height;
 
                 imageOut = new BufferedImage(outputWidth, outputHeight,
-                        BufferedImage.TYPE_3BYTE_BGR);
+                                BufferedImage.TYPE_4BYTE_ABGR);
                 final Graphics graphics = imageOut.getGraphics();
                 graphics.setColor(Color.WHITE);
-                graphics.fillRect(0, 0, outputWidth, outputHeight);
+                graphics.drawRect(0,0,outputWidth, outputHeight);
 
                 final Iterator<Organism> iterator = system.getTerrain().getOrganisms();
                 while (iterator.hasNext()) {
                     final Organism organism = iterator.next();
-                    organismDebug++;
                     for (final Cell cell : CellHelper.getAllOrganismsCells(organism.getCells())) {
                         final SpatialCoordinates spatialCoordinates = cell.getCoordinates();
-                        cellCount++;
                         int red = 0;
                         int blue = 0;
                         int green = 0;
@@ -366,7 +291,8 @@ public class WorldController {
                             alpha = 255;
                         }
 
-                        int rgb = (red & 0xFF) << 16
+                        int rgb = (alpha & 0xFF) << 24
+                                | (red & 0xFF) << 16
                                 | (green & 0xFF) << 8
                                 | (blue & 0xFF);
 
@@ -375,8 +301,8 @@ public class WorldController {
                         int rectW = cellWidth;
                         int rectH = cellHeight;
 
-                        logger.debug(String.format("Writing %s  as (%d,%d,%d,%d)", spatialCoordinates,
-                                rectX, rectY, rectW, rectH));
+                        logger.info( String.format("Writing %s  as (%d,%d,%d,%d)", spatialCoordinates,
+                                rectX, rectY, rectW, rectH ));
 
                         for (int i = rectX; i < rectX + rectW; i++) {
                             for (int j = rectY; j < rectY + rectH; j++) {
@@ -388,7 +314,6 @@ public class WorldController {
                 imageOut.flush();
             }
         }
-        //logger.error("Time " + (System.currentTimeMillis() + startTime) + " Organisms " + organismDebug + " cell count " + cellCount);
         return imageOut;
     }
 
@@ -525,12 +450,8 @@ public class WorldController {
     }
 
     @GetMapping("v1.0/{id}/log/{type}")
-    public ResponseEntity<LogResponse> getMetadata(@PathVariable(name = "id") final String worldId,
-                                                   @PathVariable(name = "type") final AvailableMetadata type,
-                                                   @RequestParam(name = "metric", required = false) final String metric,
-                                                   @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
-                                                   @RequestParam(name = "count", required = false, defaultValue = "50") final int count
-    ) {
+    public ResponseEntity<LogResponse> getOrganismHistory(@PathVariable(name = "id") final String worldId,
+                                                          @PathVariable(name = "type") final AvailableMetadata type) {
 
         final LogResponse response = new LogResponse();
         response.setStatusCode(HttpStatus.BAD_REQUEST);
@@ -544,9 +465,6 @@ public class WorldController {
                     case PERFORMANCE -> {
                         clazz = Performance.class;
                     }
-                    case ENVIRONMENT -> {
-                        clazz = Environment.class;
-                    }
                     default -> {
                         clazz = null;
                     }
@@ -558,15 +476,8 @@ public class WorldController {
                                 MetadataStoreFactory.getMetadataStore(worldId, ecosystem.getTerrain().getProperties());
 
                         final MetadataStore<?> store = sessionGroup.get(clazz);
-                        final int recordCount = 0 == page && 0 > count ? (int) store.count() : count;
                         if (!store.expire()) {
-                            final List<?> pageList;
-                            if (StringUtils.isNotEmpty(metric) && store instanceof SearchableMetadataStore<?>) {
-                                pageList = ((SearchableMetadataStore<?>) store).page(metric, page, recordCount);
-                            } else {
-                                pageList = store.page(page, recordCount);
-                            }
-                            response.log = mapper.valueToTree(pageList);
+                            response.log = mapper.valueToTree(store.retrieve());
                             response.setStatusCode(HttpStatus.OK);
                         } else {
                             response.setMessage("This information has expired or was not collected.");

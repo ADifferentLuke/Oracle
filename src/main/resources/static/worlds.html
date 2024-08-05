@@ -55,9 +55,9 @@ $(window).on('load', function() {
                     worldRow.className += " div-table-row";
 
                     let idAnchor = document.createElement('a');
-                    idAnchor.appendChild(document.createTextNode(world.id));
-                    idAnchor.title = world.id;
-                    idAnchor.href = "oracle.html?id=" + world.id;
+                    idAnchor.appendChild(document.createTextNode(world.name));
+                    idAnchor.title = world.name;
+                    idAnchor.href = "watch-simulation.html?id=" + world.id;
 
                     let idcol = document.createElement("div");
                     idcol.className += " div-table-col-large";
@@ -70,10 +70,18 @@ $(window).on('load', function() {
                     $(activecol).html( world.active ? "true" : "false");
                     worldRow.append( activecol );
 
-
                     let stepcol = document.createElement("div");
                     stepcol.className += " div-table-col-small";
-                    $(stepcol).html( world.steppable ? "true" : "false" );
+                    if( true == world.steppable ){
+                        let stepAnchor = document.createElement('a');
+                        stepAnchor.appendChild(document.createTextNode("true"));
+                        stepAnchor.title = "true";
+                        stepAnchor.href = "oracle.html?id=" + world.id;
+
+                        $(stepcol).append( stepAnchor );
+                    } else {
+                        $(stepcol).html( world.steppable ? "true" : "false" );
+                    }
                     worldRow.append( stepcol );
 
                     let logAnchor = document.createElement('a');
@@ -96,6 +104,9 @@ $(window).on('load', function() {
     .fail(function(msg) {
         alert("Failed to create world.");
     });
+   setTimeout(function(){
+    window.location.reload(1);
+    }, 30000);
 });
     </script>
 </head>

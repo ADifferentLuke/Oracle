@@ -21,7 +21,7 @@
 		<dependency>
 			<groupId>net.lukemcomber</groupId>
 			<artifactId>genetics</artifactId>
-			<version>0.1.3</version>
+			<version>0.2.0</version>
 		</dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+
+ (c) 2023 Luke McOmber
+ This code is licensed under MIT license (see LICENSE.txt for details)
+
+-->
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome to Oracle!</title>
+    <link rel="stylesheet" href="style/stylesheet.css">
+    <link rel=stylesheet href=https://cdn.jsdelivr.net/npm/pretty-print-json@2.0/dist/css/pretty-print-json.css>
+    <script src="js/jquery-3.7.1.min.js"></script>
+    <script src=https://cdn.jsdelivr.net/npm/pretty-print-json@2.0/dist/pretty-print-json.min.js></script>
+    <script>
+let worldId = "";
+let pollerLoop = null;
+$(window).on('load', function() {
+    let searchParams = new URLSearchParams(window.location.search);
+    worldId = searchParams.get("id");
+     $('#world-id').html(worldId);
+
+    $('#detailLink').attr('href',"metadata.html?id=" + worldId);
+    $('#homeLink').attr('href',"index.html");
+    pollerLoop = setInterval( draw, 250, null )
+
+
+});
+    function draw(){
+        var img = $("img");
+        $.ajax( {
+        url: "/genetics/v1.0/" + worldId,
+        type: "GET",
+        contentType: "application/json",
+        dataType: "json"
+    })
+    .done( msg => {
+        if(  msg && msg.result ){
+            img.attr("src", "/genetics/v1.0/" + worldId + "/ecology/image?width=1920&height=1080&cachebuster=" + new Date().getTime());
+
+            if( msg.result.totalTicks ){
+                $('#totalTicksDisplay').html( msg.result.totalTicks );
+            }
+            if( msg.result.totalDays ){
+                $('#totalDaysDisplay').html( msg.result.totalDays );
+            }
+            if( msg.result.currentTick ){
+                $('#currentTickDisplay').html( msg.result.currentTick );
+            }
+            if( msg.result.currentOrganismCount ){
+                $('#currentOrganismCount').html( msg.result.currentOrganismCount );
+            }
+            if( msg.result.totalOrganismCount ){
+                $('#totalOrganismCount').html( msg.result.totalOrganismCount );
+            }
+
+            if( true != msg.result.active ){
+                clearInterval(pollerLoop);
+                var simEndedMessage = document.getElementsByClassName("sim-ended-message");
+
+                for(var i = 0; i < simEndedMessage.length; i++ ){
+                    simEndedMessage[i].style.display = "block";
+                    console.log("Displayed..");
+                }
+            }
+        }
+    })
+    .fail(function(msg) {
+    });
+    }
+
+    </script>
+</head>
+<body>
+<div class="container">
+    <div class="header-row">
+    </div>
+    <div class="world-title">
+        <div class="world-label">Session:</div>
+        <div class="world-id" id="world-id"></div>
+        <div></div>
+        <div class="details-link">
+            <a id="homeLink" href="index.html">Home</a>
+            <a id="detailLink" href="test">Details</a>
+        </div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div class="sim-ended-message">Simulation has terminated.</div>
+    </div>
+    <div class="focal">
+        <img src="" class="watch-image">
+    </div>
+    <div class="footer-row">
+        <div>Ticks:</div>
+        <div id="totalTicksDisplay"></div>
+        <div>Days:</div>
+        <div id="totalDaysDisplay">0</div>
+        <div>Tick:</div>
+        <div id="currentTickDisplay"></div>
+        <div>Organisms:</div>
+        <div id="currentOrganismCount">0</div>
+        <div>Total Organisms:</div>
+        <div id="totalOrganismCount">0</div>
+    </div>
+    <div class="footer-button">
+        <div class="center-dev interactive">Turns</div>
+        <input class="center-dev interactive" id="turnCount" name="turnCount" size=9 type="text" value="1">
+        <button id="continueButton" name="continueButton" class="center-dev interactive" disabled>&gt;&gt;&gt;</button>
+    </div>
+</div>
+</body>

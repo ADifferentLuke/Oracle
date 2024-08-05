@@ -203,6 +203,10 @@ textarea {
 }
 
 .focal {
+    grid-row-start: main;
+    grid-column-start: main;
+    grid-row-end: sidebar;
+    grid-column-end: sidebar;
     grid-area: main;
     border-style: groove;
 }
@@ -221,7 +225,7 @@ textarea {
     grid-area: footer;
     display: grid;
     /*grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;*/
-    grid-template-columns: 50px 100px 50px 100px 50px 100px;
+    grid-template-columns: 75px 75px 75px 75px 75px 75px 150px 50px 150px 50px;
     grid-template-rows: 1fr 1fr;
 }
 .turn-label {
@@ -332,4 +336,11 @@ Meta data styles
 
 .int-env {
     display: block;
+}
+
+.watch-body {
+      height: 100%;
+}
+.watch-image {
+      height: 100%;
 }

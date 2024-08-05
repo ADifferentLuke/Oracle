@@ -16,6 +16,9 @@ public class WorldsListResponse extends BasicResponse {
 
         @JsonProperty("steppable")
         public boolean steppable;
+
+        @JsonProperty("name")
+        public String name;
     }
 
     @JsonProperty("worlds")

@@ -15,8 +15,8 @@
     <script src=https://cdn.jsdelivr.net/npm/pretty-print-json@2.0/dist/pretty-print-json.min.js></script>
     <script>
 
-let content = null;
 let title = null;
+let downloadLink = null;
 
 $(window).on('load', function() {
     let searchParams = new URLSearchParams(window.location.search);
@@ -25,10 +25,10 @@ $(window).on('load', function() {
 });
 
 function downloadData(){
-    if( content ){
-        var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(content,null,2));
+    if( downloadLink ){
+        //var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(content,null,2));
         var downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href",     dataStr);
+        downloadAnchorNode.setAttribute("href",    downloadLink + "page=0&count=-1" );
         downloadAnchorNode.setAttribute("download", title + ".json");
         document.body.appendChild(downloadAnchorNode); // required for firefox
         downloadAnchorNode.click();
@@ -38,6 +38,29 @@ function downloadData(){
     }
 }
 
+
+function viewSimulation(){
+    let searchParams = new URLSearchParams(window.location.search);
+    let param = searchParams.get("id");
+     $.ajax( {
+        url: "/genetics/v1.0/" + param,
+        type: "GET",
+        contentType: "application/json",
+        dataType: "json"
+    })
+    .done( msg => {
+        if( msg && msg.result.interactive ){
+            window.location.href = "/oracle.html?id=" + param;
+        } else {
+            window.location.href = "/watch-simulation.html?id=" + param;
+        }
+    })
+    .fail( msg => {
+            console.log( msg );
+            window.location.href = "/watch-simulation.html?id=" + param;
+    });
+}
+
 function showData(evt,type){
 
     let searchParams = new URLSearchParams(window.location.search);
@@ -45,15 +68,15 @@ function showData(evt,type){
     title = param + "--" + type.toLowerCase();
 
     if( type == "VIEW" ){
-        window.location.href = "/oracle.html?id=" + param;
+        viewSimulation();
     } else if( type == "HOME" ){
         window.location.href = "/index.html";
     } else {
-        var queryPath = "/genetics/v1.0/" + param + "/log/" + type;
+        var queryPath = "/genetics/v1.0/" + param + "/log/" + type + "?metric=fitness&";
         if( type == "OVERVIEW" ){
-            queryPath = "/genetics/v1.0/" + param;
+            queryPath = "/genetics/v1.0/" + param + "?verbose=true&";
         }
-
+        downloadLink = queryPath;
         $.ajax( {
             url: queryPath,
                     type: "GET",
@@ -62,7 +85,6 @@ function showData(evt,type){
                 })
                 .done(function( msg ) {
                     if( msg.log ){
-                        content = msg.log;
                         const html = prettyPrintJson.toHtml(msg.log,
                         {
                             "indent" : " ",
@@ -72,7 +94,6 @@ function showData(evt,type){
                             });
                         $('#display').html(html);
                     } else if (msg.result) {
-                        content = msg.result;
                         const html = prettyPrintJson.toHtml(msg.result,
                         {
                             "indent" : " ",
@@ -106,9 +127,8 @@ function showData(evt,type){
     <div class="tab">
         <button class="lefttab" onclick="showData(event, 'HOME')">Home</button>
         <button class="lefttab" onclick="showData(event, 'OVERVIEW')">Overview</button>
-        <button class="lefttab" onclick="showData(event, 'GENEALOGY')">Genealogy</button>
-        <button class="lefttab" onclick="showData(event, 'GENOME')">Genome</button>
         <button class="lefttab" onclick="showData(event, 'PERFORMANCE')">Performance</button>
+        <button class="lefttab" onclick="showData(event, 'ENVIRONMENT')">Environment</button>
         <button class="lefttab" onclick="showData(event, 'VIEW')">View</button>
         <button class="righttab" onclick="downloadData()">Download</button>
     </div>

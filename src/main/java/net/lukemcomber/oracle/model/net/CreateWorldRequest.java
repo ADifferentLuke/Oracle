@@ -32,6 +32,9 @@ public abstract class CreateWorldRequest {
     public long depth;
     @JsonProperty("ticksPerDay")
     public long ticksPerDay;
+
+    @JsonProperty("name")
+    public String name;
     @JsonProperty("zoo")
     public List<String> zoology = new LinkedList<>();
 }

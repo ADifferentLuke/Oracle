@@ -9,8 +9,4 @@ public class AutomatedOverview extends WorldOverview {
     @JsonProperty("tickDelay")
     public long tickDelay;
 
-    @JsonProperty("cataclysmProbability")
-    public double cataclysmProbability;
-    @JsonProperty("cataclysmSurvivalRate")
-    public double cataclysmSurvivalRate;
 }
