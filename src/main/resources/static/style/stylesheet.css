@@ -79,6 +79,16 @@ textarea {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr;
 }
+.list-header {
+    display: grid;
+    grid-template-columns: 75px 1fr 150px 50px;
+    grid-template-rows: 1fr 1fr;
+    width: 75%;
+}
+.list-title {
+}
+.list-right-title {
+}
 .oracle-canvas {
     width: 100%;
     height: 100%;
@@ -320,7 +330,13 @@ Meta data styles
 .div-table-col-large {
   float: left; /* fix for  buggy browsers */
   display: table-cell;
-  width: 70%;
+  width: 35%;
+  background-color: #ccc;
+}
+.div-table-col-mid  {
+  float: left; /* fix for  buggy browsers */
+  display: table-cell;
+  width: 17%;
   background-color: #ccc;
 }
 .div-table-col-small {

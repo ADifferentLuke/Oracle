@@ -9,8 +9,13 @@ public class CreateAutoWorldRequest extends CreateWorldRequest{
     @JsonProperty("tickDelay")
     public long tickDelay;
 
-    @JsonProperty("cataclysmProbability")
-    public double cataclysmProbability;
-    @JsonProperty("cataclysmSurvivalRate")
-    public double cataclysmSurvivalRate;
+    @JsonProperty("epochs")
+    public int epochs;
+
+    @JsonProperty("initialPopulation")
+    public int initialPopulation;
+
+    @JsonProperty("reusePopulation")
+    public int reusePopulation;
+
 }

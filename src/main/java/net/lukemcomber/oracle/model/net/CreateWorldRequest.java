@@ -25,13 +25,13 @@ public abstract class CreateWorldRequest {
     @JsonProperty("world")
     public String worldType;
     @JsonProperty("height")
-    public long height;
+    public int height;
     @JsonProperty("width")
-    public long width;
+    public int width;
     @JsonProperty("depth")
-    public long depth;
+    public int depth;
     @JsonProperty("ticksPerDay")
-    public long ticksPerDay;
+    public int ticksPerDay;
 
     @JsonProperty("name")
     public String name;

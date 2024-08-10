@@ -28,12 +28,15 @@ $(window).on('load', function() {
             var envType = $('#env option:selected').val();
             var maxDays = $("#maxDays").val();
             var tickDelay = $("#tickDelay").val();
-            var cataclysmProbability = $("#catProb").val();
-            var cataclysmSurvivalRate = $("#catSurvivalProb").val();
+            var name = $("#simName").val();
+            var epochs = $("#epochs").val();
+            var initialPopulationSize =  $("#initPopSize").val();
+            var reusePopulationSize = $("#reusePopSize").val();
 
             //TODO this can be structured better
             var postData = {
                 "world" : world,
+                "name": name,
                 "width" : x ? x : 90,
                 "height" : y ? y : 90,
                 "depth" : z ? z : 90,
@@ -45,8 +48,9 @@ $(window).on('load', function() {
                 //Add the extra options
                 postData["maxDays"] = maxDays ? maxDays : 1000000;
                 postData["tickDelay"] = tickDelay ? tickDelay : 10;
-                postData["cataclysmProbability"] = cataclysmProbability ? cataclysmProbability : 0.001;
-                postData["cataclysmSurvivalRate"] = cataclysmSurvivalRate ? cataclysmSurvivalRate : 0.10;
+                postData["initialPopulation"] = initialPopulationSize ? initialPopulationSize : 500;
+                postData["reusePopulation"] = reusePopulationSize ? reusePopulationSize : 50;
+                postData["epochs"] = epochs ? epochs : 0;
             } else {
                 postData["ticksPerTurn"] = ticksPerTurn ? ticksPerTurn : 1;
             }
@@ -113,48 +117,59 @@ function toggleOptions(value){
     <div class="form-header">
         <diV class="form-title">Generate Simulation</div>
         <div></div>
-        <select id="worldSelect" name="worldSelect" class="world-selector">
-            <option value="flat-floral-universe">Flat Flora</option>
-        </select>
     </div>
     <div class="form-input-section">
-        <div class="right-label">Width:</div>
-        <input id="xDimension" name="xDimension" type="text" placeholder="90">
-        <label class="right-label" for="env">Environment:</label>
+        <label class="right-label" for="env">Mode</label>
         <select name="env" id="env" onchange="toggleOptions(this.value);">
             <option value="interactive">Interactive</option>
             <option value="auto">Automated</option>
         </select>
 
+        <div class="right-label" for="worldSelect">Ecosystem:</div>
+        <select id="worldSelect" name="worldSelect" >
+            <option value="flat-floral-universe">Flat Flora</option>
+        </select>
+
         <div></div>
 
-        <label class="right-label" for="yDimension">Height:</label>
-        <input id="yDimension" name="yDimension" type="text" placeholder="90" class="">
+        <div class="right-label">Name:</div>
+        <input id="simName" name="simName" type="text">
+        <div class="right-label">Width:</div>
+        <input id="xDimension" name="xDimension" type="text" placeholder="90">
+
+
+        <div></div>
+
         <div class="right-label">Ticks Per Day:</div>
         <input id="ticksPerDay" name="ticksPerDay" type="text" placeholder="10" class="">
+        <label class="right-label" for="yDimension">Height:</label>
+        <input id="yDimension" name="yDimension" type="text" placeholder="90" class="">
 
 
         <div></div>
-
-        <label class="right-label" for="zDimension">Depth:</label>
-        <input id="zDimension" name="zDimension" type="text" placeholder="90" class="">
         <label class="right-label int-env" for="ticksPerTurn">Ticks Per Turn:</label>
         <input class="int-env" id="ticksPerTurn" name="ticksPerTurn" type="text" placeholder="1" class="">
         <label class="right-label auto-env" for="maxDays">Maximum Days</label>
         <input class="auto-env" id="maxDays" name="maxDays" type="text" placeholder="10000000" >
 
-        <div></div>
+        <label class="right-label" for="zDimension">Depth:</label>
+        <input id="zDimension" name="zDimension" type="text" placeholder="90" class="">
 
+
+        <div></div>
 
         <label class="right-label auto-env" for="tickDelay">Tick Delay (ms)</label>
         <input  id="tickDelay" name="tickDelay" class="auto-env" type="text" placeholder="10" >
-        <label class="right-label auto-env" for="catSurvivalProb">Cataclysm Survival Rate</label>
-        <input id="catSurvivalProb" class="auto-env" name="catSurvivalProb" type="text" placeholder=".10" >
+        <label class="right-label auto-env" for="epochs">Epochs</label>
+        <input  id="epochs" name="epochs" class="auto-env" type="text" placeholder="5" >
 
         <div></div>
 
-        <label class="right-label auto-env" for="catProb">Cataclysm Probability</label>
-        <input id="catProb" class="auto-env" name="catProb" type="text" placeholder=".0001" >
+
+        <label class="right-label auto-env" for="initPopSize">Initial Population</label>
+        <input  id="initPopSize" name="initPopSize" class="auto-env" type="text" placeholder="500" >
+        <label class="right-label auto-env" for="reusePopSize">Reincarnation Count</label>
+        <input  id="reusePopSize" name="reusePopSize" class="auto-env" type="text" placeholder="25" >
 
         <div></div>
 
@@ -166,7 +181,7 @@ function toggleOptions(value){
         <!--    "0202090c0202090c0202090c0206090c0202090c0202090c920209040282090c0202090c0602090c0202290c0202090c0202090c0202090c0202090c0282090c0302090c0202090c0200090c0202090c" -->
 
         <!-- ROOT GOD div class="form-text-input"><textarea class="zoo-input" rows="10" id="zoology" name="zoology">(45,45,3),0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c0202090c</textarea-->
-        <div class="form-text-input"><textarea class="zoo-input" rows="10" id="zoology" name="zoology">(45,45,3),0000000001000000140000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f000000</textarea>
+        <div class="form-text-input"><textarea class="zoo-input" rows="10" id="zoology" name="zoology" placeholder="(45,45,3),0000000001000000140000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f0000001f000000"></textarea>
         </div>
         <div class="form-text-button">
             <button id="submitButton" name="submitButton" class="btn btn-primary">Begin</button>

@@ -19,7 +19,16 @@ public class WorldsListResponse extends BasicResponse {
 
         @JsonProperty("name")
         public String name;
+
+        @JsonProperty("totalOrganisms")
+        public long totalOrganisms;
+
+        @JsonProperty("currentOrganisms")
+        public int currentOrganisms;
     }
+
+    @JsonProperty("simulationRunning")
+    public boolean simulationRunning;
 
     @JsonProperty("worlds")
     public List<WorldOverview> worlds;

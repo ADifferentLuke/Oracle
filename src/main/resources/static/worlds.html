@@ -10,6 +10,12 @@
     <script src="js/geneTable.js"></script>
     <title>World List</title>
     <script>
+function sortByKey(array, key) {
+    return array.sort(function(a, b) {
+        var x = a[key]; var y = b[key];
+        return ((x < y) ? -1 : ((x > y) ? 1 : 0));
+    });
+}
 $(window).on('load', function() {
 
     $.ajax( {
@@ -19,7 +25,11 @@ $(window).on('load', function() {
         dataType: "json",
     })
     .done(function( msg ) {
+        if( msg.simulationRunning !== undefined ){
+            $('#runningSim').html(msg.simulationRunning ? "Running" : "Idle" );
+        }
         if( msg.worlds ){
+            msg.worlds = sortByKey(msg.worlds,"name");
             let worldTitleRow = document.createElement("div");
             worldTitleRow.className += " div-table-row";
 
@@ -28,6 +38,18 @@ $(window).on('load', function() {
             $(idTitleCol).html( "World" );
             $(idTitleCol).css( "font-weight", "bold");
             worldTitleRow.append( idTitleCol );
+
+            let currentOrganismTitleCol = document.createElement("div");
+            currentOrganismTitleCol.className += " div-table-col-mid";
+            $(currentOrganismTitleCol).html( "Crt Organisms" );
+            $(currentOrganismTitleCol).css( "font-weight", "bold");
+            worldTitleRow.append( currentOrganismTitleCol );
+
+            let totalOrganismTitleCol = document.createElement("div");
+            totalOrganismTitleCol.className += " div-table-col-mid";
+            $(totalOrganismTitleCol).html( "Ttl Organisms" );
+            $(totalOrganismTitleCol).css( "font-weight", "bold");
+            worldTitleRow.append( totalOrganismTitleCol );
 
             let activeTitleCol = document.createElement("div");
             activeTitleCol.className += " div-table-col-small";
@@ -63,6 +85,16 @@ $(window).on('load', function() {
                     idcol.className += " div-table-col-large";
                     idcol.appendChild(idAnchor);
                     worldRow.append( idcol );
+
+                    let curOrgCol = document.createElement("div");
+                    curOrgCol.className += " div-table-col-mid";
+                    $(curOrgCol).html( world.currentOrganisms );
+                    worldRow.append( curOrgCol );
+
+                    let totalOrgCol = document.createElement("div");
+                    totalOrgCol.className += " div-table-col-mid";
+                    $(totalOrgCol).html( world.totalOrganisms );
+                    worldRow.append( totalOrgCol );
 
 
                     let activecol = document.createElement("div");
@@ -110,8 +142,15 @@ $(window).on('load', function() {
 });
     </script>
 </head>
+<br/>
+<br/>
 <body>
-<center><h3>Worlds</h3></center>
+<div class="list-header">
+    <div>Worlds</div>
+    <div></div>
+    <div>Simulation:</div>
+    <div id="runningSim" name="runningSim"></div>
+</div>
 <form>
 <div class="div-table" id="worldTable"></div>
 </form>

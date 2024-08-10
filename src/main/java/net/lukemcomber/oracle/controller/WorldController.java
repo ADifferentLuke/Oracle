@@ -18,7 +18,9 @@ import net.lukemcomber.genetics.biology.plant.cells.LeafCell;
 import net.lukemcomber.genetics.biology.plant.cells.RootCell;
 import net.lukemcomber.genetics.biology.plant.cells.SeedCell;
 import net.lukemcomber.genetics.biology.plant.cells.StemCell;
+import net.lukemcomber.genetics.exception.EvolutionException;
 import net.lukemcomber.genetics.model.SpatialCoordinates;
+import net.lukemcomber.genetics.model.ecosystem.EcosystemConfiguration;
 import net.lukemcomber.genetics.service.CellHelper;
 import net.lukemcomber.genetics.service.EcoSystemJsonReader;
 import net.lukemcomber.genetics.service.GenomeSerDe;
@@ -60,6 +62,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RequestMapping("genetics")
 public class WorldController {
 
+    public static final int WAIT_TIME_FOR_AUTO_WORLD_MS = 5;
+    public static final int RETRY_COUNT = 5;
+
     private Logger logger = LoggerFactory.getLogger(WorldController.class);
 
     private final static AtomicBoolean runningSimulation = new AtomicBoolean(false);
@@ -81,17 +86,58 @@ public class WorldController {
 
         final ObjectMapper mapper = new ObjectMapper();
         final JsonNode rootNode = mapper.valueToTree(request);
+        final int epochs = rootNode.path("epochs").asInt(0);
 
         try {
-            final Ecosystem system = new EcoSystemJsonReader().read(rootNode);
-            if (null != system) {
-                response.id = cache.set(system);
+            if (0 >= epochs) {
+                final Ecosystem system = new EcoSystemJsonReader().read(rootNode);
+                if (null != system) {
+                    response.id = cache.set(system);
+                    response.setStatusCode(HttpStatus.OK);
+                } else {
+                    response.setMessage("No terrain created.");
+                    response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
+
+                }
+            } else if (request instanceof CreateAutoWorldRequest) {
+                final SimpleSimulation simulationParameters = new SimpleSimulation();
+                final CreateAutoWorldRequest autoRequest = (CreateAutoWorldRequest) request;
+
+                simulationParameters.epochs = epochs;
+                simulationParameters.height = autoRequest.height;
+                simulationParameters.width = autoRequest.width;
+                simulationParameters.maxDays = autoRequest.maxDays;
+                simulationParameters.ticksPerDay = autoRequest.ticksPerDay;
+                simulationParameters.initialPopulation = autoRequest.initialPopulation;
+                simulationParameters.reusePopulation = autoRequest.reusePopulation;
+                simulationParameters.name = autoRequest.name;
+                if (null != autoRequest.zoology) {
+                    simulationParameters.startOrganisms = new HashMap<>();
+                    for (int i = 0; i < autoRequest.zoology.size(); i++) {
+                        final String strInputOrganism = autoRequest.zoology.get(i);
+                        if (StringUtils.isNotEmpty(strInputOrganism)) {
+                            final int splitIndex = strInputOrganism.lastIndexOf(',');
+                            if (0 < splitIndex) {
+                                final String coordinates = strInputOrganism.substring(0, splitIndex);
+                                final String genome = strInputOrganism.substring(splitIndex + 1);
+
+                                final SpatialCoordinates spatialCoordinates = SpatialCoordinates.fromString(coordinates);
+                                simulationParameters.startOrganisms.put(spatialCoordinates, genome);
+
+                            } else {
+                                throw new EvolutionException("Invalid format: : " + strInputOrganism);
+                            }
+                        }
+                    }
+                }
+
+                response.id = startAutoSimulation(simulationParameters);
+                if (StringUtils.isEmpty(response.id)) {
+                    throw new EvolutionException("Could not determine world id. Either an error occurred or system is overloaded.");
+                }
                 response.setStatusCode(HttpStatus.OK);
-            } else {
-                response.setMessage("No terrain created.");
-                response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
             }
-        } catch (final RuntimeException | IOException e) {
+        } catch (final RuntimeException | IOException | InterruptedException e) {
             logger.error("", e);
             response.setMessage(e.getMessage());
         }
@@ -99,32 +145,22 @@ public class WorldController {
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
-    @GetMapping("v1/start-auto-simulation")
-    public ResponseEntity startAutoSimulation() throws IOException {
+    private String startAutoSimulation(final SimpleSimulation simulation) throws IOException, InterruptedException {
+        String createdWorldId = null;
+        int waitTime = WAIT_TIME_FOR_AUTO_WORLD_MS;
         if (!runningSimulation.get()) {
             synchronized (runningSimulation) {
                 if (!runningSimulation.get()) {
 
-
-                    final SimpleSimulation simulationParameters = new SimpleSimulation();
-
-                    simulationParameters.epochs = 20;
-                    simulationParameters.height = 400;
-                    simulationParameters.width = 800;
-                    simulationParameters.maxDays = 1000;
-                    simulationParameters.ticksPerDay = 10;
-                    simulationParameters.initialPopulation = 1000;
-                    simulationParameters.reusePopulation = 50;
-                    simulationParameters.name = "Auto-Sim";
-
                     runningSimulation.set(true);
                     final File tmpFilePath = Files.createTempFile("store-", "filter").toFile();
-                    final SimpleSimulator simulator = new SimpleSimulator(simulationParameters, tmpFilePath);
-                    cache.addSimulationSession(simulator.getSessions());
+                    final SimpleSimulator simulator = new SimpleSimulator(simulation, tmpFilePath);
+                    final SimulationSessions sessions = simulator.getSessions();
+                    cache.addSimulationSession(sessions);
 
                     final Runnable runThread = () -> {
                         try {
-                            simulator.run();
+                            simulator.run(simulation.startOrganisms);
                         } catch (IOException | InterruptedException e) {
                             throw new RuntimeException(e);
                         } finally {
@@ -137,12 +173,24 @@ public class WorldController {
                     thread.setDaemon(true);
                     thread.setName("auto-simulation");
                     thread.start();
+
+                    int retries = 0;
+                    while (null == createdWorldId && RETRY_COUNT > retries++) {
+                        if (0 < sessions.ids().size()) {
+                            createdWorldId = sessions.ids().stream().findFirst().orElse(null);
+                        } else {
+                            logger.info("Sleeping for world id for " + waitTime);
+                            Thread.sleep(waitTime);
+                            waitTime = waitTime * (3 * waitTime / 3);
+                        }
+                    }
+
                 }
             }
+        } else {
+            throw new EvolutionException("A multi-epoch simulation is already running.");
         }
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Location", "/worlds.html");
-        return new ResponseEntity<String>(headers, HttpStatus.FOUND);
+        return createdWorldId;
     }
 
     @GetMapping("v1.0/list")
@@ -162,99 +210,44 @@ public class WorldController {
                 overview.id = system.getId();
                 overview.steppable = system instanceof SteppableEcosystem;
                 overview.name = system.getName();
+                if( Objects.nonNull(system.getTerrain())){
+                    final Terrain terrain = system.getTerrain();
+                    overview.totalOrganisms = terrain.getTotalOrganismCount();
+                    overview.currentOrganisms = terrain.getOrganismCount();
+                }
                 overviews.add(overview);
             }
         }
         response.worlds = overviews;
+        response.simulationRunning = runningSimulation.get();
         response.setStatusCode(HttpStatus.OK);
 
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
     @GetMapping("v1.0/{id}")
-    public ResponseEntity<GenericResponse<WorldOverview>> getWorldSummary(@PathVariable final String id,
-                                                                          @RequestParam(value = "verbose", defaultValue = "false")
-                                                                          final boolean verbose) {
-        final GenericResponse<WorldOverview> retVal = new GenericResponse<>();
+    public ResponseEntity<GenericResponse<EcosystemConfiguration>> getWorldSummary(@PathVariable final String id,
+                                                                                   @RequestParam(value = "verbose", defaultValue = "false") final boolean verbose) {
+        final GenericResponse<EcosystemConfiguration> retVal = new GenericResponse<>();
 
         retVal.setStatusCode(HttpStatus.BAD_REQUEST);
 
         if (StringUtils.isNotEmpty(id)) {
             final Ecosystem system = cache.get(id);
             if (null != system) {
-                final WorldOverview overview;
+                final EcosystemConfiguration ecosystemConfiguration = system.getSetupConfiguration();
+                retVal.result = ecosystemConfiguration;
+                retVal.setStatusCode(HttpStatus.OK);
 
-                final Terrain terrain = system.getTerrain();
-                if (null != terrain) {
-
-                    // TODO - I hate this duplicate code, we can clean this up with re-design
-
-                    if (system instanceof SteppableEcosystem) {
-                        final SteppableEcosystem steppableEcosystem = (SteppableEcosystem) system;
-                        overview = new SteppableOverview();
-                        ((SteppableOverview) overview).turnsPerTick = steppableEcosystem.getTicksPerTurn();
-                        overview.interactive = true;
-                        overview.width = terrain.getSizeOfXAxis();
-                        overview.height = terrain.getSizeOfYAxis();
-                        overview.depth = terrain.getSizeOfZAxis();
-                        overview.active = system.isActive();
-                        overview.name = system.getName();
-                        overview.id = id;
-                        overview.totalDays = system.getTotalDays();
-                        overview.currentTick = system.getCurrentTick();
-                        overview.totalTicks = system.getTotalTicks();
-                        overview.currentOrganismCount = system.getTerrain().getOrganismCount();
-                        overview.totalOrganismCount = system.getTerrain().getTotalOrganismCount();
-                        overview.properties = system.getProperties().toMap();
-                        if( verbose ){
-                            overview.initialPopulation = system.getInitialPopulation();
-                        }
-                        retVal.result = overview;
-                        retVal.setStatusCode(HttpStatus.OK);
-                    } else if (system instanceof AutomaticEcosystem) {
-
-                        final AutomaticEcosystem automaticEcosystem = (AutomaticEcosystem) system;
-                        overview = new AutomatedOverview();
-                        ((AutomatedOverview) overview).maxDays = automaticEcosystem.getMaxDays();
-                        ((AutomatedOverview) overview).tickDelay = automaticEcosystem.getTickDelayMs();
-
-                        overview.interactive = false;
-                        overview.width = terrain.getSizeOfXAxis();
-                        overview.height = terrain.getSizeOfYAxis();
-                        overview.depth = terrain.getSizeOfZAxis();
-                        overview.active = system.isActive();
-                        overview.id = id;
-                        overview.totalDays = system.getTotalDays();
-                        overview.currentTick = system.getCurrentTick();
-                        overview.totalTicks = system.getTotalTicks();
-                        overview.currentOrganismCount = system.getTerrain().getOrganismCount();
-                        overview.totalOrganismCount = system.getTerrain().getTotalOrganismCount();
-                        overview.name = system.getName();
-                        overview.properties = system.getProperties().toMap();
-                        retVal.result = overview;
-                        if( verbose ){
-                            overview.initialPopulation = system.getInitialPopulation();
-                        }
-                        retVal.setStatusCode(HttpStatus.OK);
-                    } else {
-                        retVal.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
-                        retVal.setMessage("Unrecognized ecosystem type. Lookup failed.");
-                    }
-
-                } else {
-                    retVal.setStatusCode(HttpStatus.BAD_REQUEST);
-                    retVal.setMessage("Terrain " + id + " found but was null.");
-                }
             } else {
                 retVal.setStatusCode(HttpStatus.BAD_REQUEST);
-                retVal.setMessage("Terrain " + id + " not found.");
+                retVal.setMessage("Ecosystem " + id + " not found.");
             }
         }
         return ResponseEntity.status(retVal.getStatusCode()).body(retVal);
 
     }
 
-    //TODO may want to make this asynch so we don't tie up a request thread
     @GetMapping("v1.0/{id}/advance")
     public ResponseEntity<AdvanceWorldResponse> advanceWorld(@PathVariable(name = "id") final String id,
                                                              @RequestParam(name = "turns", required = false, defaultValue = "1") final Integer turns) {
