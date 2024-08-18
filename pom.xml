@@ -21,7 +21,7 @@
 		<dependency>
 			<groupId>net.lukemcomber</groupId>
 			<artifactId>genetics</artifactId>
-			<version>0.2.0</version>
+			<version>0.2.2</version>
 		</dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -71,7 +71,7 @@
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
-			<version>28.2-android</version>
+			<version>32.0.0-android</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.restdocs</groupId>

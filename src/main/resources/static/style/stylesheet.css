@@ -217,8 +217,9 @@ textarea {
     grid-column-start: main;
     grid-row-end: sidebar;
     grid-column-end: sidebar;
-    grid-area: main;
+ /*   grid-area: main; */
     border-style: groove;
+    width: 90%;
 }
 
 .details-link {
@@ -359,4 +360,5 @@ Meta data styles
 }
 .watch-image {
       height: 100%;
+      width: 100%;
 }

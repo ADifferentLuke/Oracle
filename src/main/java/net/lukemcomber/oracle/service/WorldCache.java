@@ -7,7 +7,6 @@ package net.lukemcomber.oracle.service;
 
 
 import net.lukemcomber.genetics.Ecosystem;
-import net.lukemcomber.genetics.utilities.model.SimulationSessions;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
@@ -18,17 +17,18 @@ import java.util.*;
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 public class WorldCache {
 
-    //TODO add a remove or clear
-    private final HashMap<String, Ecosystem> universe;
-    private final List<SimulationSessions> autoRunningSimulations;
+    private final Map<String, Ecosystem> universe;
+    private Set<Map<String, Ecosystem>> linkedUniverses;
 
     public WorldCache() {
         universe = new HashMap<>();
-        autoRunningSimulations = new LinkedList<>();
+        linkedUniverses = new HashSet<>();
     }
 
-    public void addSimulationSession( final SimulationSessions simulationSessions ){
-        autoRunningSimulations.add(simulationSessions);
+    public void setLinkedUniversesReference( final Map<String,Ecosystem> reference){
+        if(! linkedUniverses.contains(reference)) {
+            linkedUniverses.add(reference);
+        }
     }
 
     public String set(final Ecosystem system) {
@@ -36,30 +36,32 @@ public class WorldCache {
         return system.getId();
     }
 
-    private Ecosystem getFromSimulation(final String id){
-        for( final SimulationSessions sessions : autoRunningSimulations){
-           final Ecosystem ecosystem = sessions.get(id);
-           if( null != ecosystem){
-               return ecosystem;
-           }
-        }
-        return null;
-    }
 
     public Ecosystem get(final String id) {
-        Ecosystem system = universe.get(id);
-        if( null == system ){
-            system = getFromSimulation(id);
+        Ecosystem ecosystem;
+
+        ecosystem = universe.get(id);
+        if( null == ecosystem ){
+            final Iterator<Map<String, Ecosystem>> iter = linkedUniverses.iterator();
+            while( iter.hasNext() ){
+                final Map<String, Ecosystem> map = iter.next();
+                if( map.containsKey(id)){
+                    ecosystem = map.get(id);
+                    break;
+                }
+            }
         }
-        return system;
+        return ecosystem;
     }
 
     public Collection<Ecosystem> values(){
-        final Collection<Ecosystem> fullList = new LinkedList<>(universe.values());
-        for( final SimulationSessions sessions : autoRunningSimulations){
-           fullList.addAll(sessions.sessions());
+        final LinkedList<Ecosystem> compiledList = new LinkedList<>(universe.values());
+        final Iterator<Map<String, Ecosystem>> iterator = linkedUniverses.iterator();
+        while( iterator.hasNext()){
+            final Map<String, Ecosystem> map = iterator.next();
+            compiledList.addAll( map.values());
         }
-        return fullList;
+        return compiledList;
     }
 
 

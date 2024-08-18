@@ -8,7 +8,7 @@ package net.lukemcomber.oracle.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.lukemcomber.genetics.AutomaticEcosystem;
+import net.lukemcomber.genetics.Ecosystem;
 import net.lukemcomber.genetics.SteppableEcosystem;
 import net.lukemcomber.genetics.biology.Cell;
 import net.lukemcomber.genetics.biology.Gene;
@@ -19,12 +19,11 @@ import net.lukemcomber.genetics.biology.plant.cells.RootCell;
 import net.lukemcomber.genetics.biology.plant.cells.SeedCell;
 import net.lukemcomber.genetics.biology.plant.cells.StemCell;
 import net.lukemcomber.genetics.exception.EvolutionException;
+import net.lukemcomber.genetics.io.CellHelper;
+import net.lukemcomber.genetics.io.EcosystemJsonReader;
+import net.lukemcomber.genetics.io.GenomeSerDe;
 import net.lukemcomber.genetics.model.SpatialCoordinates;
 import net.lukemcomber.genetics.model.ecosystem.EcosystemConfiguration;
-import net.lukemcomber.genetics.service.CellHelper;
-import net.lukemcomber.genetics.service.EcoSystemJsonReader;
-import net.lukemcomber.genetics.service.GenomeSerDe;
-import net.lukemcomber.genetics.Ecosystem;
 import net.lukemcomber.genetics.store.MetadataStore;
 import net.lukemcomber.genetics.store.MetadataStoreFactory;
 import net.lukemcomber.genetics.store.MetadataStoreGroup;
@@ -33,7 +32,6 @@ import net.lukemcomber.genetics.store.metadata.Environment;
 import net.lukemcomber.genetics.store.metadata.Performance;
 import net.lukemcomber.genetics.utilities.SimpleSimulator;
 import net.lukemcomber.genetics.utilities.model.SimpleSimulation;
-import net.lukemcomber.genetics.utilities.model.SimulationSessions;
 import net.lukemcomber.genetics.world.terrain.Terrain;
 import net.lukemcomber.genetics.world.terrain.TerrainProperty;
 import net.lukemcomber.oracle.model.*;
@@ -44,7 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -63,11 +60,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class WorldController {
 
     public static final int WAIT_TIME_FOR_AUTO_WORLD_MS = 5;
-    public static final int RETRY_COUNT = 5;
+    public static final int RETRY_COUNT = 6;
 
     private Logger logger = LoggerFactory.getLogger(WorldController.class);
 
     private final static AtomicBoolean runningSimulation = new AtomicBoolean(false);
+    private SimpleSimulator simulator = null;
 
     public enum AvailableMetadata {
         ENVIRONMENT,
@@ -76,6 +74,7 @@ public class WorldController {
 
     @Autowired
     private WorldCache cache;
+
 
     @PostMapping("v1.0/world")
     public ResponseEntity<CreateWorldResponse> createWorld(@RequestBody final CreateWorldRequest request) {
@@ -90,7 +89,7 @@ public class WorldController {
 
         try {
             if (0 >= epochs) {
-                final Ecosystem system = new EcoSystemJsonReader().read(rootNode);
+                final Ecosystem system = new EcosystemJsonReader().read(rootNode);
                 if (null != system) {
                     response.id = cache.set(system);
                     response.setStatusCode(HttpStatus.OK);
@@ -103,16 +102,17 @@ public class WorldController {
                 final SimpleSimulation simulationParameters = new SimpleSimulation();
                 final CreateAutoWorldRequest autoRequest = (CreateAutoWorldRequest) request;
 
-                simulationParameters.epochs = epochs;
-                simulationParameters.height = autoRequest.height;
-                simulationParameters.width = autoRequest.width;
-                simulationParameters.maxDays = autoRequest.maxDays;
-                simulationParameters.ticksPerDay = autoRequest.ticksPerDay;
-                simulationParameters.initialPopulation = autoRequest.initialPopulation;
-                simulationParameters.reusePopulation = autoRequest.reusePopulation;
-                simulationParameters.name = autoRequest.name;
+                simulationParameters.setEpochs(epochs);
+                simulationParameters.setHeight(autoRequest.height);
+                simulationParameters.setWidth(autoRequest.width);
+                simulationParameters.setMaxDays(autoRequest.maxDays);
+                simulationParameters.setTicksPerDay(autoRequest.ticksPerDay);
+                simulationParameters.setInitialPopulation(autoRequest.initialPopulation);
+                simulationParameters.setReusePopulation(autoRequest.reusePopulation);
+                simulationParameters.setTickDelayMs(autoRequest.tickDelay);
+                simulationParameters.setName(autoRequest.name);
                 if (null != autoRequest.zoology) {
-                    simulationParameters.startOrganisms = new HashMap<>();
+                    simulationParameters.setStartOrganisms(new HashMap<>());
                     for (int i = 0; i < autoRequest.zoology.size(); i++) {
                         final String strInputOrganism = autoRequest.zoology.get(i);
                         if (StringUtils.isNotEmpty(strInputOrganism)) {
@@ -122,7 +122,7 @@ public class WorldController {
                                 final String genome = strInputOrganism.substring(splitIndex + 1);
 
                                 final SpatialCoordinates spatialCoordinates = SpatialCoordinates.fromString(coordinates);
-                                simulationParameters.startOrganisms.put(spatialCoordinates, genome);
+                                simulationParameters.getStartOrganisms().put(spatialCoordinates, genome);
 
                             } else {
                                 throw new EvolutionException("Invalid format: : " + strInputOrganism);
@@ -154,13 +154,12 @@ public class WorldController {
 
                     runningSimulation.set(true);
                     final File tmpFilePath = Files.createTempFile("store-", "filter").toFile();
-                    final SimpleSimulator simulator = new SimpleSimulator(simulation, tmpFilePath);
-                    final SimulationSessions sessions = simulator.getSessions();
-                    cache.addSimulationSession(sessions);
+                    simulator = new SimpleSimulator(simulation, tmpFilePath);
+                    cache.setLinkedUniversesReference(simulator.getSessions());
 
                     final Runnable runThread = () -> {
                         try {
-                            simulator.run(simulation.startOrganisms);
+                            simulator.run(simulation.getStartOrganisms());
                         } catch (IOException | InterruptedException e) {
                             throw new RuntimeException(e);
                         } finally {
@@ -173,20 +172,20 @@ public class WorldController {
                     thread.setDaemon(true);
                     thread.setName("auto-simulation");
                     thread.start();
-
-                    int retries = 0;
-                    while (null == createdWorldId && RETRY_COUNT > retries++) {
-                        if (0 < sessions.ids().size()) {
-                            createdWorldId = sessions.ids().stream().findFirst().orElse(null);
-                        } else {
-                            logger.info("Sleeping for world id for " + waitTime);
-                            Thread.sleep(waitTime);
-                            waitTime = waitTime * (3 * waitTime / 3);
-                        }
-                    }
-
                 }
             }
+            final Map<String, Ecosystem> sessions = simulator.getSessions();
+            int retries = 0;
+            while (null == createdWorldId && RETRY_COUNT > retries++) {
+                if (0 < sessions.keySet().size()) {
+                    createdWorldId = sessions.keySet().stream().findFirst().orElse(null);
+                } else {
+                    logger.info("Sleeping for world id for " + waitTime);
+                    Thread.sleep(waitTime);
+                    waitTime = waitTime * (3 * waitTime / 3);
+                }
+            }
+
         } else {
             throw new EvolutionException("A multi-epoch simulation is already running.");
         }
@@ -210,7 +209,7 @@ public class WorldController {
                 overview.id = system.getId();
                 overview.steppable = system instanceof SteppableEcosystem;
                 overview.name = system.getName();
-                if( Objects.nonNull(system.getTerrain())){
+                if (Objects.nonNull(system.getTerrain())) {
                     final Terrain terrain = system.getTerrain();
                     overview.totalOrganisms = terrain.getTotalOrganismCount();
                     overview.currentOrganisms = terrain.getOrganismCount();
@@ -288,8 +287,6 @@ public class WorldController {
                                          @RequestParam(name = "width", required = false) final Integer imageWidth,
                                          @RequestParam(name = "height", required = false) final Integer imageHeight) {
         final long startTime = -System.currentTimeMillis();
-        int organismDebug = 0;
-        long cellCount = 0;
         BufferedImage imageOut = null;
 
         if (StringUtils.isNotEmpty(id)) {
@@ -314,14 +311,11 @@ public class WorldController {
                 final Iterator<Organism> iterator = system.getTerrain().getOrganisms();
                 while (iterator.hasNext()) {
                     final Organism organism = iterator.next();
-                    organismDebug++;
-                    for (final Cell cell : CellHelper.getAllOrganismsCells(organism.getCells())) {
+                    for (final Cell cell : CellHelper.getAllOrganismsCells(organism.getFirstCell())) {
                         final SpatialCoordinates spatialCoordinates = cell.getCoordinates();
-                        cellCount++;
                         int red = 0;
                         int blue = 0;
                         int green = 0;
-                        int alpha = 0;
 
                         if (organism.isAlive()) {
 
@@ -330,25 +324,21 @@ public class WorldController {
                                     red = 112;
                                     green = 82;
                                     blue = 252;
-                                    alpha = 255;
                                 }
                                 case LeafCell.TYPE -> {
                                     red = 46;
                                     green = 130;
                                     blue = 48;
-                                    alpha = 255;
                                 }
                                 case RootCell.TYPE -> {
                                     red = 139;
                                     green = 69;
                                     blue = 19;
-                                    alpha = 255;
                                 }
                                 case StemCell.TYPE -> {
                                     red = 82;
                                     green = 252;
                                     blue = 87;
-                                    alpha = 255;
                                 }
                             }
 
@@ -356,15 +346,14 @@ public class WorldController {
                             red = 129;
                             green = 129;
                             blue = 129;
-                            alpha = 255;
                         }
 
                         int rgb = (red & 0xFF) << 16
                                 | (green & 0xFF) << 8
                                 | (blue & 0xFF);
 
-                        int rectX = spatialCoordinates.xAxis * cellWidth;
-                        int rectY = spatialCoordinates.yAxis * cellHeight;
+                        int rectX = spatialCoordinates.xAxis() * cellWidth;
+                        int rectY = spatialCoordinates.yAxis() * cellHeight;
                         int rectW = cellWidth;
                         int rectH = cellHeight;
 
@@ -408,15 +397,15 @@ public class WorldController {
                         final OrganismBody body = new OrganismBody();
                         body.setId(organism.getUniqueID());
                         body.setAlive(organism.isAlive());
-                        for (final Cell cell : CellHelper.getAllOrganismsCells(organism.getCells())) {
+                        for (final Cell cell : CellHelper.getAllOrganismsCells(organism.getFirstCell())) {
                             final SpatialCoordinates spatialCoordinates = cell.getCoordinates();
                             final CellLocation location;
                             if (cell instanceof SeedCell) {
-                                location = new SeedCellLocation(spatialCoordinates.xAxis, spatialCoordinates.yAxis,
-                                        spatialCoordinates.zAxis, cell.getCellType(), ((SeedCell) cell).isActivated());
+                                location = new SeedCellLocation(spatialCoordinates.xAxis(), spatialCoordinates.yAxis(),
+                                        spatialCoordinates.zAxis(), cell.getCellType(), ((SeedCell) cell).isActivated());
                             } else {
-                                location = new CellLocation(spatialCoordinates.xAxis, spatialCoordinates.yAxis,
-                                        spatialCoordinates.zAxis, cell.getCellType());
+                                location = new CellLocation(spatialCoordinates.xAxis(), spatialCoordinates.yAxis(),
+                                        spatialCoordinates.zAxis(), cell.getCellType());
                             }
                             body.addCell(location);
                         }

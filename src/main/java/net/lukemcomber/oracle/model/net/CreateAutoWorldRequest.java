@@ -7,7 +7,7 @@ public class CreateAutoWorldRequest extends CreateWorldRequest{
     @JsonProperty("maxDays")
     public long maxDays;
     @JsonProperty("tickDelay")
-    public long tickDelay;
+    public int tickDelay;
 
     @JsonProperty("epochs")
     public int epochs;
