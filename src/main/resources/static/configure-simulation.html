@@ -67,7 +67,11 @@ $(window).on('load', function() {
                 var envType = $('#env option:selected').val();
 
                 if( "auto" === envType ){
-                    window.location.href = "/watch-simulation.html?id=" + msg.id;
+                    if( msg.id ){
+                        window.location.href = "/watch-simulation.html?id=" + msg.id;
+                    } else {
+                        window.location.href = "/worlds.html";
+                    }
                 } else {
                     window.location.href = "/oracle.html?id=" + msg.id;
                 }

@@ -6,9 +6,9 @@ package net.lukemcomber.oracle.controller;
  */
 
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.lukemcomber.genetics.Ecosystem;
+import net.lukemcomber.genetics.MultiEpochEcosystem;
 import net.lukemcomber.genetics.SteppableEcosystem;
 import net.lukemcomber.genetics.biology.Cell;
 import net.lukemcomber.genetics.biology.Gene;
@@ -18,20 +18,21 @@ import net.lukemcomber.genetics.biology.plant.cells.LeafCell;
 import net.lukemcomber.genetics.biology.plant.cells.RootCell;
 import net.lukemcomber.genetics.biology.plant.cells.SeedCell;
 import net.lukemcomber.genetics.biology.plant.cells.StemCell;
-import net.lukemcomber.genetics.exception.EvolutionException;
 import net.lukemcomber.genetics.io.CellHelper;
-import net.lukemcomber.genetics.io.EcosystemJsonReader;
 import net.lukemcomber.genetics.io.GenomeSerDe;
+import net.lukemcomber.genetics.io.SpatialNormalizer;
 import net.lukemcomber.genetics.model.SpatialCoordinates;
-import net.lukemcomber.genetics.model.ecosystem.EcosystemConfiguration;
+import net.lukemcomber.genetics.model.UniverseConstants;
+import net.lukemcomber.genetics.model.ecosystem.EcosystemDetails;
+import net.lukemcomber.genetics.model.ecosystem.impl.MultiEpochConfiguration;
+import net.lukemcomber.genetics.model.ecosystem.impl.SteppableEcosystemConfiguration;
 import net.lukemcomber.genetics.store.MetadataStore;
 import net.lukemcomber.genetics.store.MetadataStoreFactory;
 import net.lukemcomber.genetics.store.MetadataStoreGroup;
 import net.lukemcomber.genetics.store.SearchableMetadataStore;
 import net.lukemcomber.genetics.store.metadata.Environment;
 import net.lukemcomber.genetics.store.metadata.Performance;
-import net.lukemcomber.genetics.utilities.SimpleSimulator;
-import net.lukemcomber.genetics.utilities.model.SimpleSimulation;
+import net.lukemcomber.genetics.universes.FlatFloraUniverse;
 import net.lukemcomber.genetics.world.terrain.Terrain;
 import net.lukemcomber.genetics.world.terrain.TerrainProperty;
 import net.lukemcomber.oracle.model.*;
@@ -48,24 +49,17 @@ import org.springframework.web.bind.annotation.*;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentMap;
 
 @RestController
 @RequestMapping("genetics")
 public class WorldController {
 
-    public static final int WAIT_TIME_FOR_AUTO_WORLD_MS = 5;
-    public static final int RETRY_COUNT = 6;
-
     private Logger logger = LoggerFactory.getLogger(WorldController.class);
-
-    private final static AtomicBoolean runningSimulation = new AtomicBoolean(false);
-    private SimpleSimulator simulator = null;
 
     public enum AvailableMetadata {
         ENVIRONMENT,
@@ -83,113 +77,78 @@ public class WorldController {
 
         response.setStatusCode(HttpStatus.BAD_REQUEST);
 
-        final ObjectMapper mapper = new ObjectMapper();
-        final JsonNode rootNode = mapper.valueToTree(request);
-        final int epochs = rootNode.path("epochs").asInt(0);
+        final UniverseConstants properties = new FlatFloraUniverse();
+        Ecosystem newEcosystem;
 
         try {
-            if (0 >= epochs) {
-                final Ecosystem system = new EcosystemJsonReader().read(rootNode);
-                if (null != system) {
-                    response.id = cache.set(system);
-                    response.setStatusCode(HttpStatus.OK);
-                } else {
-                    response.setMessage("No terrain created.");
-                    response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
 
-                }
-            } else if (request instanceof CreateAutoWorldRequest) {
-                final SimpleSimulation simulationParameters = new SimpleSimulation();
-                final CreateAutoWorldRequest autoRequest = (CreateAutoWorldRequest) request;
+            final SpatialCoordinates dimensionsSpace = new SpatialCoordinates(request.width, request.height, request.depth);
+            final SpatialNormalizer normalizer = new SpatialNormalizer();
+            final Map<SpatialCoordinates, String> startingOrganisms;
 
-                simulationParameters.setEpochs(epochs);
-                simulationParameters.setHeight(autoRequest.height);
-                simulationParameters.setWidth(autoRequest.width);
-                simulationParameters.setMaxDays(autoRequest.maxDays);
-                simulationParameters.setTicksPerDay(autoRequest.ticksPerDay);
-                simulationParameters.setInitialPopulation(autoRequest.initialPopulation);
-                simulationParameters.setReusePopulation(autoRequest.reusePopulation);
-                simulationParameters.setTickDelayMs(autoRequest.tickDelay);
-                simulationParameters.setName(autoRequest.name);
-                if (null != autoRequest.zoology) {
-                    simulationParameters.setStartOrganisms(new HashMap<>());
-                    for (int i = 0; i < autoRequest.zoology.size(); i++) {
-                        final String strInputOrganism = autoRequest.zoology.get(i);
-                        if (StringUtils.isNotEmpty(strInputOrganism)) {
-                            final int splitIndex = strInputOrganism.lastIndexOf(',');
-                            if (0 < splitIndex) {
-                                final String coordinates = strInputOrganism.substring(0, splitIndex);
-                                final String genome = strInputOrganism.substring(splitIndex + 1);
-
-                                final SpatialCoordinates spatialCoordinates = SpatialCoordinates.fromString(coordinates);
-                                simulationParameters.getStartOrganisms().put(spatialCoordinates, genome);
-
-                            } else {
-                                throw new EvolutionException("Invalid format: : " + strInputOrganism);
-                            }
-                        }
-                    }
-                }
-
-                response.id = startAutoSimulation(simulationParameters);
-                if (StringUtils.isEmpty(response.id)) {
-                    throw new EvolutionException("Could not determine world id. Either an error occurred or system is overloaded.");
-                }
-                response.setStatusCode(HttpStatus.OK);
+            if (Objects.nonNull(request.zoology)) {
+                startingOrganisms = normalizer.normalize(dimensionsSpace, request.zoology);
+            } else {
+                startingOrganisms = null;
             }
-        } catch (final RuntimeException | IOException | InterruptedException e) {
-            logger.error("", e);
+
+            final Callable<Void> initializationFunction;
+            if (request instanceof CreateSteppableWorld steppableConfiguration) {
+
+                newEcosystem = new SteppableEcosystem(properties,
+                        SteppableEcosystemConfiguration.builder()
+                                .ticksPerTurn(steppableConfiguration.ticksPerTurn)
+                                .ticksPerDay(steppableConfiguration.ticksPerDay)
+                                .size(dimensionsSpace)
+                                .name(steppableConfiguration.name)
+                                .startOrganisms(startingOrganisms)
+                                .build());
+                initializationFunction = () -> {
+//                    cache.remove(newEcosystem.getId());
+                    return null;
+                };
+
+                response.id = newEcosystem.getId();
+                cache.set(newEcosystem);
+
+            } else if (request instanceof CreateAutoWorldRequest epochConfiguration) {
+
+                final MultiEpochEcosystem multiEpochEcosystem= new MultiEpochEcosystem(properties, MultiEpochConfiguration.builder()
+                        .ticksPerDay(epochConfiguration.ticksPerDay)
+                        .size(dimensionsSpace)
+                        .maxDays(epochConfiguration.maxDays)
+                        .tickDelayMs(epochConfiguration.tickDelay)
+                        .name(epochConfiguration.name)
+                        .deleteFilterOnExit(false)
+                        .fileFilterPath(epochConfiguration.filterPath)
+                        .epochs(epochConfiguration.epochs)
+                        .reusePopulation(epochConfiguration.reusePopulation)
+                        .initialPopulation(epochConfiguration.initialPopulation)
+                        .startOrganisms(startingOrganisms)
+                        .build(),
+                        ecosystem -> {
+                            cache.set(ecosystem);
+                        }, null);
+                newEcosystem = multiEpochEcosystem;
+                initializationFunction = () -> {
+                    final ConcurrentMap<String, Ecosystem> sessions = multiEpochEcosystem.getEpochs();
+                    for( final String ids : sessions.keySet()){
+                        cache.remove(ids);
+                    }
+                    return null;
+                };
+            } else {
+                throw new RuntimeException();
+            }
+
+            newEcosystem.initialize(initializationFunction);
+
+            response.setStatusCode(HttpStatus.OK);
+
+        } catch (final IOException e) {
             response.setMessage(e.getMessage());
         }
-
         return ResponseEntity.status(response.getStatusCode()).body(response);
-    }
-
-    private String startAutoSimulation(final SimpleSimulation simulation) throws IOException, InterruptedException {
-        String createdWorldId = null;
-        int waitTime = WAIT_TIME_FOR_AUTO_WORLD_MS;
-        if (!runningSimulation.get()) {
-            synchronized (runningSimulation) {
-                if (!runningSimulation.get()) {
-
-                    runningSimulation.set(true);
-                    final File tmpFilePath = Files.createTempFile("store-", "filter").toFile();
-                    simulator = new SimpleSimulator(simulation, tmpFilePath);
-                    cache.setLinkedUniversesReference(simulator.getSessions());
-
-                    final Runnable runThread = () -> {
-                        try {
-                            simulator.run(simulation.getStartOrganisms());
-                        } catch (IOException | InterruptedException e) {
-                            throw new RuntimeException(e);
-                        } finally {
-                            synchronized (runningSimulation) {
-                                runningSimulation.set(false);
-                            }
-                        }
-                    };
-                    Thread thread = new Thread(runThread);
-                    thread.setDaemon(true);
-                    thread.setName("auto-simulation");
-                    thread.start();
-                }
-            }
-            final Map<String, Ecosystem> sessions = simulator.getSessions();
-            int retries = 0;
-            while (null == createdWorldId && RETRY_COUNT > retries++) {
-                if (0 < sessions.keySet().size()) {
-                    createdWorldId = sessions.keySet().stream().findFirst().orElse(null);
-                } else {
-                    logger.info("Sleeping for world id for " + waitTime);
-                    Thread.sleep(waitTime);
-                    waitTime = waitTime * (3 * waitTime / 3);
-                }
-            }
-
-        } else {
-            throw new EvolutionException("A multi-epoch simulation is already running.");
-        }
-        return createdWorldId;
     }
 
     @GetMapping("v1.0/list")
@@ -218,24 +177,22 @@ public class WorldController {
             }
         }
         response.worlds = overviews;
-        response.simulationRunning = runningSimulation.get();
         response.setStatusCode(HttpStatus.OK);
 
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
     @GetMapping("v1.0/{id}")
-    public ResponseEntity<GenericResponse<EcosystemConfiguration>> getWorldSummary(@PathVariable final String id,
-                                                                                   @RequestParam(value = "verbose", defaultValue = "false") final boolean verbose) {
-        final GenericResponse<EcosystemConfiguration> retVal = new GenericResponse<>();
+    public ResponseEntity<GenericResponse<EcosystemDetails>> getWorldSummary(@PathVariable final String id,
+                                                                             @RequestParam(value = "verbose", defaultValue = "false") final boolean verbose) {
+        final GenericResponse<EcosystemDetails> retVal = new GenericResponse<>();
 
         retVal.setStatusCode(HttpStatus.BAD_REQUEST);
 
         if (StringUtils.isNotEmpty(id)) {
             final Ecosystem system = cache.get(id);
             if (null != system) {
-                final EcosystemConfiguration ecosystemConfiguration = system.getSetupConfiguration();
-                retVal.result = ecosystemConfiguration;
+                retVal.result = system.getSetupConfiguration();
                 retVal.setStatusCode(HttpStatus.OK);
 
             } else {
@@ -255,24 +212,20 @@ public class WorldController {
 
         if (StringUtils.isNotEmpty(id)) {
             final Ecosystem system = cache.get(id);
-            if (null != system) {
-                if (system instanceof SteppableEcosystem) {
-                    response.active = system.isActive();
-                    if (system.isActive()) {
-                        int i = 0;
-                        for (; i < turns; ++i) {
-                            if (!system.advance()) {
-                                response.active = false;
-                                break;
-                            }
+            if (system instanceof SteppableEcosystem steppableEcosystem) {
+                response.active = steppableEcosystem.isActive();
+                if (steppableEcosystem.isActive()) {
+                    int i = 0;
+                    for (; i < turns; ++i) {
+                        if (!steppableEcosystem.advance()) {
+                            response.active = false;
+                            break;
                         }
-                        response.ticksMade = (long) i;
-                        response.setStatusCode(HttpStatus.OK);
-                    } else {
-                        response.setMessage(String.format("Simulation %s is not interactive.", id));
                     }
+                    response.ticksMade = (long) i;
+                    response.setStatusCode(HttpStatus.OK);
                 } else {
-                    response.setMessage(String.format("Simulation unable to advance session %s.", id));
+                    response.setMessage(String.format("Simulation %s is not interactive.", id));
                 }
             } else {
                 response.setMessage(String.format("Session $s not found.", id));
@@ -431,7 +384,7 @@ public class WorldController {
             if (0 <= xCoord && 0 <= yCoord && 0 <= zCoord) {
                 //We don't do negative space
                 final SpatialCoordinates location = new SpatialCoordinates(xCoord, yCoord, zCoord);
-                final List<TerrainProperty> properties = ecosystem.getTerrain().getTerrain(location);
+                final List<TerrainProperty> properties = ecosystem.getTerrain().getTerrainProperties(location);
 
                 response.setCoordinates(location);
                 for (final TerrainProperty terrainProperty : properties) {
@@ -541,12 +494,12 @@ public class WorldController {
 
                         final MetadataStore<?> store = sessionGroup.get(clazz);
                         final int recordCount = 0 == page && 0 > count ? (int) store.count() : count;
-                        if (!store.expire()) {
+                        if (!store.isExpired()) {
                             final List<?> pageList;
                             if (StringUtils.isNotEmpty(metric) && store instanceof SearchableMetadataStore<?>) {
                                 pageList = ((SearchableMetadataStore<?>) store).page(metric, page, recordCount);
                             } else {
-                                pageList = store.page(page, recordCount);
+                                pageList = store.page(null, page, recordCount);
                             }
                             response.log = mapper.valueToTree(pageList);
                             response.setStatusCode(HttpStatus.OK);

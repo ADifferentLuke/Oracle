@@ -18,50 +18,27 @@ import java.util.*;
 public class WorldCache {
 
     private final Map<String, Ecosystem> universe;
-    private Set<Map<String, Ecosystem>> linkedUniverses;
 
     public WorldCache() {
         universe = new HashMap<>();
-        linkedUniverses = new HashSet<>();
     }
 
-    public void setLinkedUniversesReference( final Map<String,Ecosystem> reference){
-        if(! linkedUniverses.contains(reference)) {
-            linkedUniverses.add(reference);
-        }
-    }
-
-    public String set(final Ecosystem system) {
+    public synchronized String set(final Ecosystem system) {
         universe.put(system.getId(), system);
         return system.getId();
     }
 
 
-    public Ecosystem get(final String id) {
-        Ecosystem ecosystem;
-
-        ecosystem = universe.get(id);
-        if( null == ecosystem ){
-            final Iterator<Map<String, Ecosystem>> iter = linkedUniverses.iterator();
-            while( iter.hasNext() ){
-                final Map<String, Ecosystem> map = iter.next();
-                if( map.containsKey(id)){
-                    ecosystem = map.get(id);
-                    break;
-                }
-            }
-        }
-        return ecosystem;
+    public synchronized Ecosystem get(final String id) {
+        return universe.get(id);
     }
 
-    public Collection<Ecosystem> values(){
-        final LinkedList<Ecosystem> compiledList = new LinkedList<>(universe.values());
-        final Iterator<Map<String, Ecosystem>> iterator = linkedUniverses.iterator();
-        while( iterator.hasNext()){
-            final Map<String, Ecosystem> map = iterator.next();
-            compiledList.addAll( map.values());
-        }
-        return compiledList;
+    public synchronized Collection<Ecosystem> values(){
+        return new LinkedList<>(universe.values());
+    }
+
+    public synchronized Ecosystem remove( final String id ){
+        return universe.remove(id);
     }
 
 

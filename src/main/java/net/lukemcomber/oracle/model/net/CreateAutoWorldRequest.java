@@ -12,10 +12,16 @@ public class CreateAutoWorldRequest extends CreateWorldRequest{
     @JsonProperty("epochs")
     public int epochs;
 
+    @JsonProperty("filterPath")
+    public String filterPath;
+
     @JsonProperty("initialPopulation")
     public int initialPopulation;
 
     @JsonProperty("reusePopulation")
     public int reusePopulation;
+
+    @JsonProperty("name")
+    public String name;
 
 }
