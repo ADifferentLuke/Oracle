@@ -16,6 +16,14 @@ function sortByKey(array, key) {
         return ((x < y) ? -1 : ((x > y) ? 1 : 0));
     });
 }
+function downloadData(){
+        var downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href",    "/genetics/v1.0/list" );
+        downloadAnchorNode.setAttribute("download",  "generations.json");
+        document.body.appendChild(downloadAnchorNode); // required for firefox
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+}
 $(window).on('load', function() {
 
     $.ajax( {
@@ -148,8 +156,8 @@ $(window).on('load', function() {
 <div class="list-header">
     <div>Worlds</div>
     <div></div>
-    <div>Simulation:</div>
-    <div id="runningSim" name="runningSim"></div>
+    <div>:</div>
+    <button  onclick="downloadData()">Download</button>
 </div>
 <form>
 <div class="div-table" id="worldTable"></div>

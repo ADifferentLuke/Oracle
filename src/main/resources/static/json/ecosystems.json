@@ -12,15 +12,15 @@
         "death.plant.starvation.limit.energy" : 0,
         "death.plant.stagnation.limit.days" : 10,
         "death.plant.germination.limit.ticks" : 10,
-        "cell.leaf.max-energy-production" : 2,
+        "cell.leaf.max-energy-production" : 3,
         "cell.leaf.metabolic-rate" : 1,
         "cell.seed.max-energy-production" : 0,
         "cell.seed.metabolic-rate" : 0,
-        "cell.stem.max-energy-production" : 1,
+        "cell.stem.max-energy-production" : 0,
         "cell.stem.metabolic-rate" : 1,
         "cell.root.max-energy-production" : 2,
-        "cell.root.metabolic-rate" : 1,
-        "action.leaf.grow" : 2,
+        "cell.root.metabolic-rate" : 4,
+        "action.leaf.grow" : 3,
         "action.root.grow" : 2,
         "action.seed.grow" : 20,
         "action.seed.eject" : 25,
@@ -32,7 +32,8 @@
         "metadata.Performance.enabled" : true,
         "metadata.Environment.enabled" : true,
         "metadata.Performance.export" : true,
-        "metadata.Environment.export" : true
+        "metadata.Environment.export" : true,
+        "metadata.Environment.sampling-rate": 10
       }
     }
 
