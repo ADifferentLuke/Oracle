@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="style/stylesheet.css">
     <script src="js/jquery-3.7.1.min.js"></script>
     <script>
+var configurations = {};
 $(window).on('load', function() {
     console.log('All assets are loaded');
     $("#submitButton").bind({
@@ -23,7 +24,8 @@ $(window).on('load', function() {
             var ticksPerDay = $("#ticksPerDay").val();
             var ticksPerTurn = $("#ticksPerTurn").val();
             var zoology = $("#zoology").val().split('\n');
-            var world = $('#worldSelect option:selected').val();
+            var worldName = $('#worldSelect option:selected').val();
+            var properties = configurations[worldName];
 
             var envType = $('#env option:selected').val();
             var maxDays = $("#maxDays").val();
@@ -33,16 +35,19 @@ $(window).on('load', function() {
             var initialPopulationSize =  $("#initPopSize").val();
             var reusePopulationSize = $("#reusePopSize").val();
 
-            //TODO this can be structured better
             var postData = {
-                "world" : world,
+                "world" : worldName,
                 "name": name,
                 "width" : x ? x : 90,
                 "height" : y ? y : 90,
                 "depth" : z ? z : 90,
                 "ticksPerDay" : ticksPerDay ? ticksPerDay : 10,
-                "zoo" : zoology
+                "zoo" : zoology,
+                "properties" : properties
             };
+            if( properties ){
+                postData['properties'] = properties;
+            }
 
             if( "auto" === envType ){
                 //Add the extra options
@@ -84,7 +89,25 @@ $(window).on('load', function() {
         }
     });
 
+    fetch('/json/ecosystems.json')
+        .then((response) => response.json())
+        .then((json) => populateEcosystem(json));
 })
+
+function populateEcosystem(json){
+    console.log(json);
+
+    if( json ){
+        var select = document.getElementById('worldSelect');
+        json.ecosystems.forEach((obj, i) => {
+            configurations[obj.name] = obj.configuration;
+            var opt = document.createElement('option');
+            opt.value = obj.name;
+            opt.innerHTML = obj.name;
+            select.appendChild(opt);
+        } );
+    }
+}
 
 function toggleOptions(value){
     var autoDivTags = document.getElementsByClassName("auto-env");
@@ -131,7 +154,6 @@ function toggleOptions(value){
 
         <div class="right-label" for="worldSelect">Ecosystem:</div>
         <select id="worldSelect" name="worldSelect" >
-            <option value="flat-floral-universe">Flat Flora</option>
         </select>
 
         <div></div>

@@ -1,0 +1,40 @@
+
+{
+  "ecosystems" : [
+    {
+      "name": "FlatFlora",
+      "configuration": {
+        "terrain.type" : "FLAT_WORLD",
+        "daily.solar.property" : 10,
+        "initial.soil.property" : 100,
+        "initial.plant.energy" : 5,
+        "death.plant.age.limit.days" : 100,
+        "death.plant.starvation.limit.energy" : 0,
+        "death.plant.stagnation.limit.days" : 10,
+        "death.plant.germination.limit.ticks" : 10,
+        "cell.leaf.max-energy-production" : 2,
+        "cell.leaf.metabolic-rate" : 1,
+        "cell.seed.max-energy-production" : 0,
+        "cell.seed.metabolic-rate" : 0,
+        "cell.stem.max-energy-production" : 1,
+        "cell.stem.metabolic-rate" : 1,
+        "cell.root.max-energy-production" : 2,
+        "cell.root.metabolic-rate" : 1,
+        "action.leaf.grow" : 2,
+        "action.root.grow" : 2,
+        "action.seed.grow" : 20,
+        "action.seed.eject" : 25,
+        "genome.transpose.probability" : 5,
+        "genome.mutate.probability" : 5,
+        "metadata.ttl" : 86400,
+        "metadata.export" : true,
+        "metadata.export.path" : "./output/",
+        "metadata.Performance.enabled" : true,
+        "metadata.Environment.enabled" : true,
+        "metadata.Performance.export" : true,
+        "metadata.Environment.export" : true
+      }
+    }
+
+  ]
+}

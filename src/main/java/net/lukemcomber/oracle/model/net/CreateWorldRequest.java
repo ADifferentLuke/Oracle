@@ -14,6 +14,7 @@ import net.lukemcomber.genetics.SteppableEcosystem;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.DEDUCTION;
 
@@ -37,4 +38,7 @@ public abstract class CreateWorldRequest {
     public String name;
     @JsonProperty("zoo")
     public List<String> zoology = new LinkedList<>();
+
+    @JsonProperty("properties")
+    public Map<String,Object> properties;
 }

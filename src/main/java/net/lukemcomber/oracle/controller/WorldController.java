@@ -32,6 +32,7 @@ import net.lukemcomber.genetics.store.MetadataStoreGroup;
 import net.lukemcomber.genetics.store.SearchableMetadataStore;
 import net.lukemcomber.genetics.store.metadata.Environment;
 import net.lukemcomber.genetics.store.metadata.Performance;
+import net.lukemcomber.genetics.universes.CustomUniverse;
 import net.lukemcomber.genetics.universes.FlatFloraUniverse;
 import net.lukemcomber.genetics.world.terrain.Terrain;
 import net.lukemcomber.genetics.world.terrain.TerrainProperty;
@@ -77,7 +78,7 @@ public class WorldController {
 
         response.setStatusCode(HttpStatus.BAD_REQUEST);
 
-        final UniverseConstants properties = new FlatFloraUniverse();
+        final UniverseConstants properties = new CustomUniverse(request.properties);
         Ecosystem newEcosystem;
 
         try {
@@ -133,7 +134,7 @@ public class WorldController {
                 initializationFunction = () -> {
                     final ConcurrentMap<String, Ecosystem> sessions = multiEpochEcosystem.getEpochs();
                     for( final String ids : sessions.keySet()){
-                        cache.remove(ids);
+                        //cache.remove(ids);
                     }
                     return null;
                 };
