@@ -28,7 +28,7 @@ function downloadData(){
     if( downloadLink ){
         //var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(content,null,2));
         var downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href",    downloadLink + "page=0&count=-1" );
+        downloadAnchorNode.setAttribute("href",    downloadLink + "&page=0&count=-1" );
         downloadAnchorNode.setAttribute("download", title + ".json");
         document.body.appendChild(downloadAnchorNode); // required for firefox
         downloadAnchorNode.click();
