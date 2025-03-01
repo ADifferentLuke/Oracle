@@ -498,9 +498,9 @@ public class WorldController {
                         if (!store.isExpired()) {
                             final List<?> pageList;
                             if (StringUtils.isNotEmpty(metric) && store instanceof SearchableMetadataStore<?>) {
-                                pageList = ((SearchableMetadataStore<?>) store).page(metric, page, recordCount);
+                                pageList = ((SearchableMetadataStore<?>) store).page(page, recordCount);
                             } else {
-                                pageList = store.page(null, page, recordCount);
+                                pageList = store.page(page, recordCount);
                             }
                             response.log = mapper.valueToTree(pageList);
                             response.setStatusCode(HttpStatus.OK);

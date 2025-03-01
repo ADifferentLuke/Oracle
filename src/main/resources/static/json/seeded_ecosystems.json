@@ -2,7 +2,7 @@
 {
   "ecosystems" : [
     {
-      "name": "FlatFlora",
+      "name": "SeededFlatFlora",
       "configuration": {
         "terrain.type" : "FLAT_WORLD",
         "daily.solar.property" : 10,
@@ -26,6 +26,11 @@
         "action.seed.eject" : 15,
         "genome.transpose.probability" : 5,
         "genome.mutate.probability" : 3,
+
+        "genome.transpose.seed": 1337,
+        "genome.mutate.random.seed": 80085,
+        "multi-epoch.population.rng.seed": 13,
+
         "metadata.ttl" : 600,
         "metadata.export" : true,
         "metadata.export.path" : "./output/",
