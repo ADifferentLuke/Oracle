@@ -54,6 +54,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 
 @RestController
@@ -132,10 +134,7 @@ public class WorldController {
                         }, null);
                 newEcosystem = multiEpochEcosystem;
                 initializationFunction = () -> {
-                    final ConcurrentMap<String, Ecosystem> sessions = multiEpochEcosystem.getEpochs();
-                    for( final String ids : sessions.keySet()){
-                        //cache.remove(ids);
-                    }
+                    final ConcurrentLinkedDeque<Ecosystem> sessions = multiEpochEcosystem.getEpochs();
                     return null;
                 };
             } else {
